@@ -15,12 +15,15 @@ import { LoggedInLayout } from './components/LoggedInLayout';
 import { AdminRoute } from './components/AdminRoute';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import ManageServicesPage from './pages/ManageServicesPage';
+import { ManageAdminsPage } from './pages/admin/ManageAdminsPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { RequestServiceListPage } from './pages/RequestServiceListPage';
 import { AdminLoginPage } from './pages/AdminLoginPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { AdminLayout } from './components/layout/AdminLayout';
 import { ServiceRequestsPage } from './pages/ServiceRequestsPage';
+import { AdminProfilePage } from './pages/AdminProfilePage';
+import { SetInitialPasswordPage } from './pages/SetInitialPasswordPage';
 
 function App() {
   return (
@@ -38,6 +41,7 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/activate/:uid/:token" element={<ActivationPage />} />
+          <Route path="/set-initial-password/:uid/:token" element={<SetInitialPasswordPage />} />
           <Route element={<ProtectedRoute />}>
             <Route element={<LoggedInLayout />}>
                 <Route path="/dashboard" element={<DashboardPage />} />
@@ -55,6 +59,8 @@ function App() {
               <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
               <Route path="/admin/requests" element={<ServiceRequestsPage />} />
               <Route path="/admin/services" element={<ManageServicesPage />} />
+              <Route path="/admin/manage-admins" element={<ManageAdminsPage />} />
+              <Route path="/admin/profile" element={<AdminProfilePage />} />
             </Route>
           </Route>
         </Routes>

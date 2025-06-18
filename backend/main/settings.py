@@ -82,6 +82,10 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'main.wsgi.application'
 
+# Allow all origins for development purposes. 
+# For production, you should restrict this to your actual frontend domain.
+CORS_ORIGIN_ALLOW_ALL = True
+
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
@@ -163,6 +167,11 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 ADMIN_EMAIL = 'admin@cyphex.com' # The email address for admin notifications
 
 AUTH_USER_MODEL = 'api.UserAccount'
+
+
+
+# Frontend URL for generating links in emails
+FRONTEND_URL = 'http://localhost:3000'
 LOGIN_URL = '/admin/login/'
 
 AUTHENTICATION_BACKENDS = (

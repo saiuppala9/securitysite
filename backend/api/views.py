@@ -1,6 +1,10 @@
-from rest_framework import viewsets, permissions
-from .models import Service, Enquiry, ServiceRequest, Report
-from .serializers import ServiceSerializer, EnquirySerializer, ServiceRequestSerializer, ReportSerializer, ServiceRequestReportUploadSerializer
+from rest_framework import viewsets, permissions, generics, status
+from rest_framework.decorators import action
+from rest_framework.permissions import BasePermission
+from .models import Service, Enquiry, ServiceRequest, Report, UserAccount
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.http import urlsafe_base64_decode
+from django.utils.encoding import force_str
 from django.http import JsonResponse, HttpResponseRedirect
 from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 from django.conf import settings
@@ -8,7 +12,6 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.utils import timezone
 from datetime import timedelta
-from rest_framework.decorators import action
 from rest_framework.views import APIView
 from django.db.models import Count
 import hashlib
@@ -16,11 +19,101 @@ import uuid
 from django.core.mail import send_mail
 from django.core.cache import cache
 import random
-from .serializers import ProfileUpdateSerializer, CustomUserSerializer
+from .serializers import (
+    ServiceSerializer,
+    EnquirySerializer,
+    ServiceRequestSerializer,
+    ReportSerializer,
+    ServiceRequestReportUploadSerializer,
+    AdminUserSerializer,
+    CustomUserSerializer,
+    ProfileUpdateSerializer,
+    SetInitialPasswordSerializer,
+    AdminProfileSerializer, PasswordResetSerializer
+)
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.db.models import Count, Q
+import logging
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
+
+
+class AdminProfileUpdateInitiateView(APIView):
+    permission_classes = [permissions.IsAdminUser]
+
+    def post(self, request, *args, **kwargs):
+        user = request.user
+        update_type = request.data.get('update_type')  # 'details' or 'password'
+
+        pending_data = {'update_type': update_type}
+
+        if update_type == 'details':
+            serializer = AdminProfileSerializer(instance=user, data=request.data, partial=True)
+            if not serializer.is_valid():
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            pending_data.update(serializer.validated_data)
+        
+        elif update_type == 'password':
+            serializer = PasswordResetSerializer(data=request.data)
+            if not serializer.is_valid():
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            pending_data.update(serializer.validated_data)
+        
+        else:
+            return Response({'error': 'Invalid update type specified.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        otp = str(random.randint(100000, 999999))
+        cache.set(f'profile_update_{user.id}', {'otp': otp, 'data': pending_data}, timeout=300)  # 5 minutes expiry
+
+        try:
+            send_mail(
+                'Your Profile Update OTP',
+                f'Your OTP to update your profile is: {otp}. It is valid for 5 minutes.',
+                settings.DEFAULT_FROM_EMAIL,
+                [user.email],
+                fail_silently=False,
+            )
+        except Exception as e:
+            logger.error(f"Failed to send profile update OTP email to {user.email}: {e}")
+            return Response({'error': 'Failed to send OTP email.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response({'detail': 'OTP has been sent to your email.'}, status=status.HTTP_200_OK)
+
+
+class AdminProfileUpdateVerifyView(APIView):
+    permission_classes = [permissions.IsAdminUser]
+
+    def post(self, request, *args, **kwargs):
+        user = request.user
+        otp_from_user = request.data.get('otp')
+
+        if not otp_from_user:
+            return Response({'error': 'OTP is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        cached_info = cache.get(f'profile_update_{user.id}')
+
+        if not cached_info:
+            return Response({'error': 'OTP has expired or is invalid. Please try again.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if cached_info['otp'] != otp_from_user:
+            return Response({'error': 'The OTP you entered is incorrect.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        pending_data = cached_info['data']
+        update_type = pending_data['update_type']
+
+        if update_type == 'details':
+            user.first_name = pending_data.get('first_name', user.first_name)
+            user.last_name = pending_data.get('last_name', user.last_name)
+            user.save(update_fields=['first_name', 'last_name'])
+
+        elif update_type == 'password':
+            user.set_password(pending_data['new_password'])
+            user.save(update_fields=['password'])
+
+        cache.delete(f'profile_update_{user.id}')
+        return Response({'detail': 'Your profile has been updated successfully.'}, status=status.HTTP_200_OK)
 
 
 class ServiceViewSet(viewsets.ModelViewSet):
@@ -58,17 +151,39 @@ class EnquiryViewSet(viewsets.ModelViewSet):
 
 class ServiceRequestViewSet(viewsets.ModelViewSet):
     serializer_class = ServiceRequestSerializer
-    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         """
-        Admins can see all requests.
-        Regular users can only see their own requests.
+        Admins see requests based on their role.
+        - Superuser, Main Admin, Full Access Admin: All requests.
+        - Partial Access Admin: Only assigned requests.
+        - Regular users: Only their own requests.
+        - Other staff: No requests.
         """
         user = self.request.user
+        if not user.is_authenticated:
+            return ServiceRequest.objects.none()
+
+        # Base queryset with optimizations to prevent N+1 query problems
+        base_queryset = ServiceRequest.objects.select_related(
+            'service', 'client', 'assigned_to'
+        ).prefetch_related('reports')
+
         if user.is_staff:
-            return ServiceRequest.objects.all().order_by('-request_date')
-        return ServiceRequest.objects.filter(client=user).order_by('-request_date')
+            is_main_or_full_admin = user.is_superuser or \
+                                    user.groups.filter(name__in=['Main Admin', 'Full Access Admin']).exists()
+
+            if is_main_or_full_admin:
+                return base_queryset.all().order_by('-request_date')
+
+            if user.groups.filter(name='Partial Access Admin').exists():
+                return base_queryset.filter(assigned_to=user).order_by('-request_date')
+            
+            # Staff user with no specific admin role (if any) sees nothing
+            return ServiceRequest.objects.none()
+
+        # Regular, non-staff user
+        return base_queryset.filter(client=user).order_by('-request_date')
 
     def perform_create(self, serializer):
         """
@@ -76,6 +191,50 @@ class ServiceRequestViewSet(viewsets.ModelViewSet):
         The status will default to 'pending_approval' from the model.
         """
         serializer.save(client=self.request.user)
+
+    @action(detail=True, methods=['post'])
+    def withdraw(self, request, pk=None):
+        """
+        Allows a user to withdraw their own service request if it is pending approval.
+        """
+        service_request = self.get_object()
+        if service_request.client != request.user:
+            return Response(
+                {'error': 'You do not have permission to withdraw this request.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        if service_request.status != 'pending_approval':
+            return Response(
+                {'error': 'This request cannot be withdrawn because it is no longer pending approval.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        service_request.status = 'withdrawn'
+        service_request.save()
+        serializer = self.get_serializer(service_request)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAdminUser])
+    def assign(self, request, pk=None):
+        """
+        Assigns a service request to an admin user.
+        """
+        service_request = self.get_object()
+        admin_id = request.data.get('admin_id')
+
+        if not admin_id:
+            return Response({'error': 'admin_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            admin_user = User.objects.get(id=admin_id, is_staff=True)
+        except User.DoesNotExist:
+            return Response({'error': 'Admin user not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        service_request.assigned_to = admin_user
+        service_request.save(update_fields=['assigned_to'])
+
+        return Response(ServiceRequestSerializer(service_request).data)
 
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAdminUser])
     def update_status(self, request, pk=None):
@@ -311,12 +470,13 @@ class ServiceRequestStatsView(APIView):
     def get(self, request, *args, **kwargs):
         user = request.user
         stats = ServiceRequest.objects.filter(client=user).aggregate(
-            total_requests=Count('id'),
-            completed=Count('id', filter=Q(status='completed')),
-            in_progress=Count('id', filter=Q(status='in_progress')),
-            pending_approval=Count('id', filter=Q(status='pending_approval')),
-            awaiting_payment=Count('id', filter=Q(status='awaiting_payment')),
-            rejected=Count('id', filter=Q(status='rejected')),
+            total_requests_count=Count('pk'),
+            completed_count=Count('pk', filter=Q(status='completed')),
+            in_progress_count=Count('pk', filter=Q(status='in_progress')),
+            pending_approval_count=Count('pk', filter=Q(status='pending_approval')),
+            awaiting_payment_count=Count('pk', filter=Q(status='awaiting_payment')),
+            rejected_count=Count('pk', filter=Q(status='rejected')),
+            withdrawn_count=Count('pk', filter=Q(status='withdrawn')),
         )
         return Response(stats)
 
@@ -355,11 +515,119 @@ class VerifyProfileUpdateView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+class IsSuperAdmin(permissions.BasePermission):
+    """
+    Custom permission to only allow super admins (Main or Full Access).
+    """
+    def has_permission(self, request, view):
+        return request.user and request.user.is_authenticated and \
+               (request.user.is_superuser or
+                request.user.groups.filter(name__in=['Main Admin', 'Full Access Admin']).exists())
+
+
+class SetInitialPasswordView(generics.GenericAPIView):
+    permission_classes = [permissions.AllowAny]
+    serializer_class = SetInitialPasswordSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        uidb64 = self.kwargs.get('uidb64')
+        token = self.kwargs.get('token')
+        logger.info(f"Attempting to set password with uidb64: {uidb64}, token: {token}")
+
+        try:
+            uid = force_str(urlsafe_base64_decode(uidb64))
+            user = UserAccount.objects.get(pk=uid)
+            logger.info(f"Found user: {user.email} with pk: {uid}")
+        except (TypeError, ValueError, OverflowError, UserAccount.DoesNotExist) as e:
+            user = None
+            logger.error(f"Error finding user from uidb64 {uidb64}: {e}")
+
+        if user is not None:
+            token_is_valid = default_token_generator.check_token(user, token)
+            logger.info(f"Token validation result for user {user.email}: {token_is_valid}")
+            if token_is_valid:
+                new_password = serializer.validated_data['new_password']
+                user.set_password(new_password)
+                user.save()
+                logger.info(f"Successfully set new password for {user.email}")
+                return Response({"detail": "Password has been set successfully."}, status=status.HTTP_200_OK)
+        
+        logger.warning(f"Invalid token or user ID for uidb64: {uidb64}")
+        return Response({"detail": "Invalid token or user ID."}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AdminListForAssignmentView(APIView):
+    """
+    Provides a list of all designated admin users for assignment purposes.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        admin_group_names = ['Main Admin', 'Full Access Admin', 'Partial Access Admin']
+        admins = User.objects.filter(groups__name__in=admin_group_names).distinct()
+        serializer = CustomUserSerializer(admins, many=True)
+        return Response(serializer.data)
+
+
+class AdminUserViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for main admins to manage other admin users.
+    """
+    serializer_class = AdminUserSerializer
+    permission_classes = [permissions.IsAuthenticated, IsSuperAdmin]
+
+    def get_queryset(self):
+        """
+        Returns all staff users who belong to one of the admin groups.
+        This ensures that only explicitly designated admins appear in assignment lists,
+        excluding any system or non-admin staff accounts.
+        """
+        admin_group_names = ['Main Admin', 'Full Access Admin', 'Partial Access Admin']
+        return User.objects.filter(groups__name__in=admin_group_names).distinct()
+
+
+class UserDashboardStatsView(APIView):
+    """
+    Provides statistics for the logged-in user's dashboard.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        # This endpoint is for non-admin clients.
+        if request.user.is_staff:
+            return Response(
+                {"error": "This endpoint is for client users."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        base_queryset = ServiceRequest.objects.filter(client=request.user)
+
+        stats = base_queryset.aggregate(
+            total_requests=Count('id'),
+            completed=Count('id', filter=Q(status='completed')),
+            in_progress=Count('id', filter=Q(status='in_progress')),
+            pending_approval=Count('id', filter=Q(status='pending_approval')),
+            awaiting_payment=Count('id', filter=Q(status='awaiting_payment')),
+            rejected=Count('id', filter=Q(status='rejected')),
+            withdrawn=Count('id', filter=Q(status='withdrawn')),
+        )
+        return Response(stats)
+
+
 class AdminStatusDistributionView(APIView):
     permission_classes = [permissions.IsAdminUser]
 
     def get(self, request, *args, **kwargs):
-        status_distribution = ServiceRequest.objects.values('status').annotate(count=Count('status')).order_by('status')
+        user = request.user
+        base_queryset = ServiceRequest.objects.all()
+
+        if user.groups.filter(name='Partial Access Admin').exists():
+            base_queryset = base_queryset.filter(assigned_to=user)
+
+        status_distribution = base_queryset.values('status').annotate(count=Count('status')).order_by('status')
         return Response(list(status_distribution))
 
 
@@ -373,17 +641,27 @@ class AdminServiceRequestStatsView(APIView):
     permission_classes = [permissions.IsAdminUser]
 
     def get(self, request, *args, **kwargs):
+        user = request.user
         thirty_days_ago = timezone.now() - timedelta(days=30)
 
-        # Note: 'approved' here means any status past 'pending_approval' and not rejected/cancelled.
-        approved_statuses = ['awaiting_payment', 'in_progress', 'completed']
+        base_queryset = ServiceRequest.objects.filter(request_date__gte=thirty_days_ago)
 
-        stats = ServiceRequest.objects.filter(request_date__gte=thirty_days_ago).aggregate(
+        # Filter for partial admins
+        if user.groups.filter(name='Partial Access Admin').exists():
+            base_queryset = base_queryset.filter(assigned_to=user)
+
+        stats = base_queryset.aggregate(
             total_requests=Count('id'),
-            approved=Count('id', filter=Q(status__in=approved_statuses)),
             completed=Count('id', filter=Q(status='completed')),
+            withdrawn=Count('id', filter=Q(status='withdrawn')),
+            rejected=Count('id', filter=Q(status='rejected')),
         )
-        stats['total_users'] = User.objects.count()
+
+        if not user.groups.filter(name='Partial Access Admin').exists():
+            stats['total_users'] = User.objects.filter(is_staff=False, is_active=True).count()
+        else:
+            stats['total_users'] = 0  # Partial admins don't see this, but API should be consistent
+
         return Response(stats)
 
 

@@ -78,6 +78,26 @@ const PaymentTimer = ({ approvedAt }: { approvedAt: string }) => {
 
 export function MyRequestsPage() {
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchRequests = () => {
+    setLoading(true);
+    axiosInstance.get<ServiceRequest[]>('/api/service-requests/')
+      .then(response => {
+        setRequests(response.data);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Failed to fetch requests', err);
+        setError('Failed to load your service requests. Please try again later.');
+        setLoading(false);
+      });
+  };
+
+  useEffect(() => {
+    fetchRequests();
+  }, []);
 
   const handleDownload = (fileUrl: string, fileName: string) => {
     axiosInstance.get(fileUrl, { responseType: 'blob' })
@@ -99,24 +119,41 @@ export function MyRequestsPage() {
         });
       });
   };
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
+  const handleWithdraw = async (serviceRequestId: number) => {
+    if (window.confirm('Are you sure you want to withdraw this request? This action cannot be undone.')) {
+      try {
+        await axiosInstance.post(`/api/service-requests/${serviceRequestId}/withdraw/`);
+        notifications.show({
+          title: 'Request Withdrawn',
+          message: 'Your service request has been successfully withdrawn.',
+          color: 'green',
+        });
+        fetchRequests(); // Refresh the list of requests
+      } catch (err: any) {
+        notifications.show({
+          title: 'Withdrawal Failed',
+          message: err.response?.data?.error || 'Could not withdraw the request.',
+          color: 'red',
+        });
+      }
+    }
+  };
 
-  useEffect(() => {
-    axiosInstance.get<ServiceRequest[]>('/api/service-requests/')
-      .then(response => {
-        setRequests(response.data);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error('Failed to fetch requests', err);
-        setError('Failed to load your service requests. Please try again later.');
-        setLoading(false);
+  const handlePayment = async (serviceRequestId: number) => {
+    try {
+      const response = await axiosInstance.post<{ [key: string]: string }>('/api/payu/initiate/', {
+        service_request_id: serviceRequestId,
       });
-
-
-  }, []);
+      postToPayU(response.data);
+    } catch (err: any) {
+      notifications.show({
+        title: 'Payment Error',
+        message: err.response?.data?.error || 'Could not initiate payment.',
+        color: 'red',
+      });
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -125,7 +162,8 @@ export function MyRequestsPage() {
       case 'in_progress': return 'blue';
       case 'completed': return 'green';
       case 'rejected':
-      case 'cancelled': return 'red';
+      case 'cancelled':
+      case 'withdrawn': return 'red';
       default: return 'gray';
     }
   };
@@ -149,21 +187,6 @@ export function MyRequestsPage() {
 
     document.body.appendChild(form);
     form.submit();
-  };
-
-  const handlePayment = async (serviceRequestId: number) => {
-    try {
-      const response = await axiosInstance.post<{ [key: string]: string }>('/api/payu/initiate/', {
-        service_request_id: serviceRequestId,
-      });
-      postToPayU(response.data);
-    } catch (err: any) {
-      notifications.show({
-        title: 'Payment Error',
-        message: err.response?.data?.error || 'Could not initiate payment.',
-        color: 'red',
-      });
-    }
   };
 
   return (
@@ -197,6 +220,18 @@ export function MyRequestsPage() {
               <Text size="sm" mb={4}><strong>URL:</strong> {request.url}</Text>
               <Text size="sm" mb={4}><strong>Roles:</strong> {request.roles}</Text>
               {request.notes && <Text size="sm" mb={4}><strong>Notes:</strong> {request.notes}</Text>}
+
+              {request.status === 'pending_approval' && (
+                <Button
+                  color="red"
+                  variant="outline"
+                  size="xs"
+                  mt="sm"
+                  onClick={() => handleWithdraw(request.id)}
+                >
+                  Withdraw Request
+                </Button>
+              )}
 
               {request.status === 'awaiting_payment' && request.approved_at && (
                 <>

@@ -60,3 +60,5 @@ This is a full-stack web application for a security services company, featuring 
     ```
 
 The application will be accessible at `http://localhost:3000`.
+
+*This repo is automatically updated using a custom Python script.*

@@ -8,6 +8,8 @@ interface User {
   first_name: string;
   last_name: string;
   is_staff: boolean;
+  is_superuser: boolean;
+  groups: string[];
 }
 
 interface AuthTokens {
@@ -21,6 +23,7 @@ interface AuthContextType {
   login: (access: string, refresh: string) => Promise<User>;
   logout: () => void;
   loading: boolean;
+  fetchUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -75,12 +78,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const fetchUser = async () => {
+    try {
+      const { data } = await axiosInstance.get<User>('/auth/users/me/');
+      setUser(data);
+    } catch (error) {
+      console.error('Failed to fetch user data.', error);
+      logout();
+    }
+  };
+
   const contextData: AuthContextType = {
     user,
     tokens,
     login,
     logout,
     loading,
+    fetchUser,
   };
 
   return (

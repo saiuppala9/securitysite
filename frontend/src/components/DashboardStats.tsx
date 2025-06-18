@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Grid, Card, Text, Group, RingProgress, Center } from '@mantine/core';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import axiosInstance from '../utils/axiosInstance';
-import { IconCheck, IconClock, IconX, IconLoader } from '@tabler/icons-react';
+import { IconCheck, IconClock, IconX, IconLoader, IconArrowBackUp } from '@tabler/icons-react';
 
 interface StatsData {
     total_requests: number;
@@ -11,6 +11,7 @@ interface StatsData {
     pending_approval: number;
     awaiting_payment: number;
     rejected: number;
+    withdrawn: number;
 }
 
 const COLORS = {
@@ -19,6 +20,7 @@ const COLORS = {
     pending_approval: '#FAB005', // yellow
     awaiting_payment: '#FD7E14', // orange
     rejected: '#FA5252', // red
+    withdrawn: '#868E96', // gray
 };
 
 export function DashboardStats() {
@@ -56,11 +58,12 @@ export function DashboardStats() {
         { name: 'Pending Approval', value: stats.pending_approval, color: COLORS.pending_approval },
         { name: 'Awaiting Payment', value: stats.awaiting_payment, color: COLORS.awaiting_payment },
         { name: 'Rejected', value: stats.rejected, color: COLORS.rejected },
+        { name: 'Withdrawn', value: stats.withdrawn, color: COLORS.withdrawn },
     ].filter(item => item.value > 0);
 
     return (
         <Grid>
-            <Grid.Col span={{ base: 12, md: 4 }}>
+            <Grid.Col span={{ base: 12, sm: 6, md: 2 }}>
                 <Card withBorder radius="md" p="sm">
                     <Group>
                         <RingProgress
@@ -74,7 +77,7 @@ export function DashboardStats() {
                     </Group>
                 </Card>
             </Grid.Col>
-            <Grid.Col span={{ base: 12, md: 4 }}>
+            <Grid.Col span={{ base: 12, sm: 6, md: 2 }}>
                 <Card withBorder radius="md" p="sm">
                     <Group>
                          <RingProgress
@@ -88,7 +91,35 @@ export function DashboardStats() {
                     </Group>
                 </Card>
             </Grid.Col>
-            <Grid.Col span={{ base: 12, md: 4 }}>
+            <Grid.Col span={{ base: 12, sm: 6, md: 2 }}>
+                <Card withBorder radius="md" p="sm">
+                    <Group>
+                         <RingProgress
+                            sections={[{ value: (stats.pending_approval / stats.total_requests) * 100, color: 'yellow' }]}
+                            label={<Center><IconLoader size={22} /></Center>}
+                        />
+                        <div>
+                            <Text c="dimmed" size="xs" tt="uppercase" fw={700}>Pending</Text>
+                            <Text fw={700} size="xl">{stats.pending_approval}</Text>
+                        </div>
+                    </Group>
+                </Card>
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, sm: 6, md: 2 }}>
+                <Card withBorder radius="md" p="sm">
+                    <Group>
+                         <RingProgress
+                            sections={[{ value: (stats.awaiting_payment / stats.total_requests) * 100, color: 'orange' }]}
+                            label={<Center><IconClock size={22} /></Center>}
+                        />
+                        <div>
+                            <Text c="dimmed" size="xs" tt="uppercase" fw={700}>Awaiting Payment</Text>
+                            <Text fw={700} size="xl">{stats.awaiting_payment}</Text>
+                        </div>
+                    </Group>
+                </Card>
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, sm: 6, md: 2 }}>
                 <Card withBorder radius="md" p="sm">
                     <Group>
                          <RingProgress
@@ -98,6 +129,20 @@ export function DashboardStats() {
                         <div>
                             <Text c="dimmed" size="xs" tt="uppercase" fw={700}>Rejected</Text>
                             <Text fw={700} size="xl">{stats.rejected}</Text>
+                        </div>
+                    </Group>
+                </Card>
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, sm: 6, md: 2 }}>
+                <Card withBorder radius="md" p="sm">
+                    <Group>
+                         <RingProgress
+                            sections={[{ value: (stats.withdrawn / stats.total_requests) * 100, color: 'gray' }]}
+                            label={<Center><IconArrowBackUp size={22} /></Center>}
+                        />
+                        <div>
+                            <Text c="dimmed" size="xs" tt="uppercase" fw={700}>Withdrawn</Text>
+                            <Text fw={700} size="xl">{stats.withdrawn}</Text>
                         </div>
                     </Group>
                 </Card>

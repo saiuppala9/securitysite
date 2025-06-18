@@ -71,10 +71,12 @@ class ServiceRequest(models.Model):
         ('in_progress', 'In Progress'),
         ('completed', 'Completed'),
         ('rejected', 'Rejected'),
+        ('withdrawn', 'Withdrawn'),
         ('cancelled', 'Cancelled'),
     ]
     service = models.ForeignKey(Service, on_delete=models.CASCADE)
-    client = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    client = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='service_requests')
+    assigned_to = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_requests')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending_approval')
     approved_at = models.DateTimeField(null=True, blank=True)
     request_date = models.DateTimeField(auto_now_add=True)
@@ -86,7 +88,9 @@ class ServiceRequest(models.Model):
     payment_gateway_txn_id = models.CharField(max_length=100, blank=True, null=True)
 
     def __str__(self):
-        return f'{self.service.name} request from {self.client.email}'
+        service_name = self.service.name if self.service else "[Deleted Service]"
+        client_email = self.client.email if self.client else "[Deleted Client]"
+        return f'{service_name} request from {client_email}'
 
 class Report(models.Model):
     service_request = models.ForeignKey(ServiceRequest, related_name='reports', on_delete=models.CASCADE)

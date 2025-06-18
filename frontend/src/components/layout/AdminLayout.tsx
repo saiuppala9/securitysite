@@ -1,27 +1,35 @@
 import { AppShell, Burger, Group, NavLink, Button, Stack } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { IconGauge, IconActivity, IconCircleOff } from '@tabler/icons-react';
+import { IconGauge, IconActivity, IconCircleOff, IconUsers, IconUser } from '@tabler/icons-react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 const navLinks = [
   { icon: IconGauge, label: 'Dashboard', path: '/admin/dashboard' },
+  { icon: IconUser, label: 'Profile', path: '/admin/profile' },
   { icon: IconActivity, label: 'Service Requests', path: '/admin/requests' },
   { icon: IconCircleOff, label: 'Service Management', path: '/admin/services' },
+  { icon: IconUsers, label: 'Manage Admins', path: '/admin/manage-admins' },
 ];
 
 export function AdminLayout() {
   const [opened, { toggle }] = useDisclosure();
   const location = useLocation();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const navigate = useNavigate();
+
+  console.log('Current user in AdminLayout:', user);
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
-  const items = navLinks.map((item) => (
+      const visibleLinks = user?.groups?.includes('Partial Access Admin')
+    ? navLinks.filter(link => link.label === 'Dashboard' || link.label === 'Service Requests' || link.label === 'Profile')
+    : navLinks;
+
+  const items = visibleLinks.map((item) => (
     <NavLink
       key={item.label}
       label={item.label}
