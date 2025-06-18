@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>New Service Request Received</title>
+</head>
+<body>
+    <p>A new service request has been received and paid for.</p>
+    <p><strong>Client:</strong> {{ client_name }} ({{ client_email }})</p>
+    <p><strong>Service:</strong> {{ service_name }}</p>
+    <p><strong>URL:</strong> {{ url }}</p>
+    <p><strong>Roles:</strong></p>
+    <pre>{{ roles }}</pre>
+    <p><strong>Notes:</strong></p>
+    <pre>{{ notes }}</pre>
+    <p>Please review the request in the admin dashboard.</p>
+</body>
+</html>
