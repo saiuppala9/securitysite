@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+
+# Django
+db.sqlite3
+/media/
+/static/
+
+# Environment
+.env
+
+# Node
+/frontend/node_modules
+/frontend/build
+.DS_Store
+npm-debug.log
+
+# IDE
+.idea/
+.vscode/
