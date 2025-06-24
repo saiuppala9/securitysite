@@ -4,7 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { MantineProvider } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
 import App from './App';
-import theme from './theme';
+import { theme } from './theme';
 import { AuthProvider } from './context/AuthContext';
 
 const root = ReactDOM.createRoot(

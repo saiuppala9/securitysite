@@ -1,0 +1,32 @@
+.accordionItem {
+  background-color: var(--mantine-color-dark-6);
+  border: 1px solid var(--mantine-color-dark-4);
+  border-radius: var(--mantine-radius-md);
+  margin-bottom: var(--mantine-spacing-lg);
+  transition: box-shadow 0.2s ease;
+}
+
+.accordionItem:hover {
+  box-shadow: var(--mantine-shadow-lg);
+}
+
+.accordionControl {
+  padding: var(--mantine-spacing-md) var(--mantine-spacing-lg);
+  border-radius: var(--mantine-radius-md);
+}
+
+.accordionControl:hover {
+  background-color: var(--mantine-color-dark-5);
+}
+
+.accordionPanel {
+  padding: var(--mantine-spacing-lg);
+  padding-top: 0;
+}
+
+.statusBadge {
+  font-size: var(--mantine-font-size-sm);
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}

@@ -94,7 +94,7 @@ export function AdminProfilePage() {
         </Container>
       </Modal>
 
-      <Container fluid>
+      <Container size="sm">
         <Title order={2} mb="xl">Admin Profile</Title>
         <Paper withBorder shadow="md" p={30} mt={30} radius="md">
           <Title order={4}>Update Your Details</Title>

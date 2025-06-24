@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Container, Title, Accordion, Text, Badge, Paper, Group, Button, Loader, Alert } from '@mantine/core';
 import axiosInstance, { baseURL } from '../utils/axiosInstance';
 import { notifications } from '@mantine/notifications';
-
 import { IconAlertCircle, IconClock } from '@tabler/icons-react';
+import classes from './MyRequestsPage.module.css';
 
 interface ServiceRequest {
   id: number;
@@ -132,7 +132,7 @@ export function MyRequestsPage() {
         fetchRequests(); // Refresh the list of requests
       } catch (err: any) {
         notifications.show({
-          title: 'Withdrawal Failed',
+          title: 'Withdrawal Error',
           message: err.response?.data?.error || 'Could not withdraw the request.',
           color: 'red',
         });
@@ -142,10 +142,9 @@ export function MyRequestsPage() {
 
   const handlePayment = async (serviceRequestId: number) => {
     try {
-      const response = await axiosInstance.post<{ [key: string]: string }>('/api/payu/initiate/', {
-        service_request_id: serviceRequestId,
-      });
-      postToPayU(response.data);
+      const response = await axiosInstance.post<{ [key: string]: string }>(`/api/service-requests/${serviceRequestId}/pay/`);
+      const payuData = response.data;
+      postToPayU(payuData);
     } catch (err: any) {
       notifications.show({
         title: 'Payment Error',
@@ -190,11 +189,16 @@ export function MyRequestsPage() {
   };
 
   return (
-    <Container my="xl">
-      <Title ta="center" mb="xl">My Service Requests</Title>
+    <Container my="xl" size="lg">
+      <Title order={1} ta="center" mb="lg" c="violet.6">
+        My Service Requests
+      </Title>
+      <Text c="dimmed" ta="center" size="xl" mb="xl">
+        Track the status of your ongoing and past service requests.
+      </Text>
 
-      {loading && <Loader />}
-      {error && <Alert icon={<IconAlertCircle size="1rem" />} title="Error!" color="red">{error}</Alert>}
+      {loading && <Loader style={{ display: 'block', margin: 'auto' }} />}
+      {error && <Alert icon={<IconAlertCircle size="1rem" />} title="Error!" color="red" variant="light">{error}</Alert>}
       
       {!loading && !error && requests.length === 0 && (
         <Paper withBorder shadow="md" radius="md" p={40} mt={60} style={{ maxWidth: 500, margin: 'auto', textAlign: 'center' }}>
@@ -207,53 +211,62 @@ export function MyRequestsPage() {
       )}
 
       {!loading && !error && requests.length > 0 && (
-        <div style={{ maxWidth: 900, margin: 'auto' }}>
+        <Accordion variant="separated" radius="md" chevronPosition="left">
           {requests.map((request: ServiceRequest) => (
-            <Paper withBorder shadow="md" radius="md" p={28} mb={32} key={request.id}>
-              <Group justify="space-between" align="center" mb="sm">
-                <Title order={4} fw={600}>{request.service_name}</Title>
-                <Badge color={getStatusColor(request.status)} size="lg" radius="sm" style={{ fontSize: 14, letterSpacing: 1 }}>
-                  {request.status.replace(/_/g, ' ').toUpperCase()}
-                </Badge>
-              </Group>
-              <Text size="sm" c="dimmed" mb={8}>Requested on: {new Date(request.request_date).toLocaleDateString()}</Text>
-              <Text size="sm" mb={4}><strong>URL:</strong> {request.url}</Text>
-              <Text size="sm" mb={4}><strong>Roles:</strong> {request.roles}</Text>
-              {request.notes && <Text size="sm" mb={4}><strong>Notes:</strong> {request.notes}</Text>}
+            <Accordion.Item value={String(request.id)} key={request.id} className={classes.accordionItem}>
+              <Accordion.Control className={classes.accordionControl}>
+                <Group justify="space-between" align="center">
+                  <Title order={4} fw={600}>{request.service_name}</Title>
+                  <Badge color={getStatusColor(request.status)} size="lg" radius="sm" className={classes.statusBadge}>
+                    {request.status.replace(/_/g, ' ').toUpperCase()}
+                  </Badge>
+                </Group>
+              </Accordion.Control>
+              <Accordion.Panel className={classes.accordionPanel}>
+                <Text size="sm" c="dimmed" mb={16}>Requested on: {new Date(request.request_date).toLocaleDateString()}</Text>
+                
+                <Paper withBorder p="md" radius="md" mb="md">
+                    <Text mb={4}><strong>URL:</strong> {request.url}</Text>
+                    <Text mb={4}><strong>Roles:</strong> {request.roles}</Text>
+                    {request.notes && <Text mb={4}><strong>Notes:</strong> {request.notes}</Text>}
+                </Paper>
 
-              {request.status === 'pending_approval' && (
-                <Button
-                  color="red"
-                  variant="outline"
-                  size="xs"
-                  mt="sm"
-                  onClick={() => handleWithdraw(request.id)}
-                >
-                  Withdraw Request
-                </Button>
-              )}
-
-              {request.status === 'awaiting_payment' && request.approved_at && (
-                <>
-                  <PaymentTimer approvedAt={request.approved_at} />
-                  <Button fullWidth mt="md" onClick={() => handlePayment(request.id)}>
-                    Pay Now
+                {request.status === 'pending_approval' && (
+                  <Button
+                    color="red"
+                    variant="outline"
+                    size="sm"
+                    mt="sm"
+                    onClick={() => handleWithdraw(request.id)}
+                  >
+                    Withdraw Request
                   </Button>
-                </>
-              )}
+                )}
 
-              {request.status === 'completed' && request.report_file && (
-                <Button 
-                  onClick={() => request.report_file && handleDownload(request.report_file, `report-${request.id}.pdf`)}
-                  variant="outline"
-                  disabled={!request.report_file}
-                >
-                  Download Report
-                </Button>
-              )}
-            </Paper>
+                {request.status === 'awaiting_payment' && request.approved_at && (
+                  <>
+                    <PaymentTimer approvedAt={request.approved_at} />
+                    <Button fullWidth mt="md" onClick={() => handlePayment(request.id)} color="violet" size="md">
+                      Proceed to Payment
+                    </Button>
+                  </>
+                )}
+
+                {request.status === 'completed' && request.report_file && (
+                  <Button 
+                    onClick={() => request.report_file && handleDownload(request.report_file, `report-${request.id}.pdf`)}
+                    variant="filled"
+                    color="violet"
+                    size="sm"
+                    disabled={!request.report_file}
+                  >
+                    Download Report
+                  </Button>
+                )}
+              </Accordion.Panel>
+            </Accordion.Item>
           ))}
-        </div>
+        </Accordion>
       )}
     </Container>
   );

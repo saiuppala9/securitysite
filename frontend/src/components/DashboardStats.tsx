@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Grid, Card, Text, Group, RingProgress, Center } from '@mantine/core';
+import { SimpleGrid, Paper, Text, Group, RingProgress, Center, useMantineTheme, Card, Loader } from '@mantine/core';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import axiosInstance from '../utils/axiosInstance';
-import { IconCheck, IconClock, IconX, IconLoader, IconArrowBackUp } from '@tabler/icons-react';
+import { IconCheck, IconClock, IconX, IconLoader, IconArrowBackUp, IconHourglass } from '@tabler/icons-react';
 
 interface StatsData {
     total_requests: number;
@@ -14,18 +14,10 @@ interface StatsData {
     withdrawn: number;
 }
 
-const COLORS = {
-    completed: '#40C057', // green
-    in_progress: '#228BE6', // blue
-    pending_approval: '#FAB005', // yellow
-    awaiting_payment: '#FD7E14', // orange
-    rejected: '#FA5252', // red
-    withdrawn: '#868E96', // gray
-};
-
 export function DashboardStats() {
     const [stats, setStats] = useState<StatsData | null>(null);
     const [loading, setLoading] = useState(true);
+    const theme = useMantineTheme();
 
     useEffect(() => {
         axiosInstance.get<StatsData>('/api/service-requests/stats/')
@@ -40,7 +32,7 @@ export function DashboardStats() {
     }, []);
 
     if (loading) {
-        return <Group justify="center" mt="xl"><IconLoader className="animate-spin" /></Group>;
+        return <Group justify="center" mt="xl"><Loader size="xl" /></Group>;
     }
 
     if (!stats || stats.total_requests === 0) {
@@ -52,115 +44,72 @@ export function DashboardStats() {
         );
     }
 
+    const COLORS: { [key: string]: string } = {
+        Completed: theme.colors.green[6],
+        'In Progress': theme.colors.blue[6],
+        'Pending Approval': theme.colors.yellow[6],
+        'Awaiting Payment': theme.colors.orange[6],
+        Rejected: theme.colors.red[6],
+        Withdrawn: theme.colors.gray[6],
+    };
+
+    const data = [
+        { title: 'Completed', value: stats.completed, icon: IconCheck, color: 'green' },
+        { title: 'In Progress', value: stats.in_progress, icon: IconHourglass, color: 'blue' },
+        { title: 'Pending', value: stats.pending_approval, icon: IconClock, color: 'yellow' },
+        { title: 'Awaiting Payment', value: stats.awaiting_payment, icon: IconClock, color: 'orange' },
+        { title: 'Rejected', value: stats.rejected, icon: IconX, color: 'red' },
+        { title: 'Withdrawn', value: stats.withdrawn, icon: IconArrowBackUp, color: 'gray' },
+    ];
+
+    const statCards = data.map((stat) => (
+        <Paper withBorder radius="md" p="lg" key={stat.title}>
+            <Group>
+                <RingProgress
+                    size={100}
+                    thickness={10}
+                    roundCaps
+                    sections={[{ value: (stat.value / stats.total_requests) * 100, color: stat.color }]}
+                    label={
+                        <Center>
+                            <stat.icon style={{ width: '2rem', height: '2rem' }} stroke={1.5} />
+                        </Center>
+                    }
+                />
+                <div>
+                    <Text c="dimmed" size="md" tt="uppercase" fw={700}>{stat.title}</Text>
+                    <Text fw={700} size="3rem">{stat.value}</Text>
+                </div>
+            </Group>
+        </Paper>
+    ));
+
     const pieData = [
-        { name: 'Completed', value: stats.completed, color: COLORS.completed },
-        { name: 'In Progress', value: stats.in_progress, color: COLORS.in_progress },
-        { name: 'Pending Approval', value: stats.pending_approval, color: COLORS.pending_approval },
-        { name: 'Awaiting Payment', value: stats.awaiting_payment, color: COLORS.awaiting_payment },
-        { name: 'Rejected', value: stats.rejected, color: COLORS.rejected },
-        { name: 'Withdrawn', value: stats.withdrawn, color: COLORS.withdrawn },
+        { name: 'Completed', value: stats.completed },
+        { name: 'In Progress', value: stats.in_progress },
+        { name: 'Pending Approval', value: stats.pending_approval },
+        { name: 'Awaiting Payment', value: stats.awaiting_payment },
+        { name: 'Rejected', value: stats.rejected },
+        { name: 'Withdrawn', value: stats.withdrawn },
     ].filter(item => item.value > 0);
 
     return (
-        <Grid>
-            <Grid.Col span={{ base: 12, sm: 6, md: 2 }}>
-                <Card withBorder radius="md" p="sm">
-                    <Group>
-                        <RingProgress
-                            sections={[{ value: (stats.completed / stats.total_requests) * 100, color: 'teal' }]}
-                            label={<Center><IconCheck size={22} /></Center>}
-                        />
-                        <div>
-                            <Text c="dimmed" size="xs" tt="uppercase" fw={700}>Completed</Text>
-                            <Text fw={700} size="xl">{stats.completed}</Text>
-                        </div>
-                    </Group>
-                </Card>
-            </Grid.Col>
-            <Grid.Col span={{ base: 12, sm: 6, md: 2 }}>
-                <Card withBorder radius="md" p="sm">
-                    <Group>
-                         <RingProgress
-                            sections={[{ value: (stats.in_progress / stats.total_requests) * 100, color: 'blue' }]}
-                            label={<Center><IconClock size={22} /></Center>}
-                        />
-                        <div>
-                            <Text c="dimmed" size="xs" tt="uppercase" fw={700}>In Progress</Text>
-                            <Text fw={700} size="xl">{stats.in_progress}</Text>
-                        </div>
-                    </Group>
-                </Card>
-            </Grid.Col>
-            <Grid.Col span={{ base: 12, sm: 6, md: 2 }}>
-                <Card withBorder radius="md" p="sm">
-                    <Group>
-                         <RingProgress
-                            sections={[{ value: (stats.pending_approval / stats.total_requests) * 100, color: 'yellow' }]}
-                            label={<Center><IconLoader size={22} /></Center>}
-                        />
-                        <div>
-                            <Text c="dimmed" size="xs" tt="uppercase" fw={700}>Pending</Text>
-                            <Text fw={700} size="xl">{stats.pending_approval}</Text>
-                        </div>
-                    </Group>
-                </Card>
-            </Grid.Col>
-            <Grid.Col span={{ base: 12, sm: 6, md: 2 }}>
-                <Card withBorder radius="md" p="sm">
-                    <Group>
-                         <RingProgress
-                            sections={[{ value: (stats.awaiting_payment / stats.total_requests) * 100, color: 'orange' }]}
-                            label={<Center><IconClock size={22} /></Center>}
-                        />
-                        <div>
-                            <Text c="dimmed" size="xs" tt="uppercase" fw={700}>Awaiting Payment</Text>
-                            <Text fw={700} size="xl">{stats.awaiting_payment}</Text>
-                        </div>
-                    </Group>
-                </Card>
-            </Grid.Col>
-            <Grid.Col span={{ base: 12, sm: 6, md: 2 }}>
-                <Card withBorder radius="md" p="sm">
-                    <Group>
-                         <RingProgress
-                            sections={[{ value: (stats.rejected / stats.total_requests) * 100, color: 'red' }]}
-                            label={<Center><IconX size={22} /></Center>}
-                        />
-                        <div>
-                            <Text c="dimmed" size="xs" tt="uppercase" fw={700}>Rejected</Text>
-                            <Text fw={700} size="xl">{stats.rejected}</Text>
-                        </div>
-                    </Group>
-                </Card>
-            </Grid.Col>
-            <Grid.Col span={{ base: 12, sm: 6, md: 2 }}>
-                <Card withBorder radius="md" p="sm">
-                    <Group>
-                         <RingProgress
-                            sections={[{ value: (stats.withdrawn / stats.total_requests) * 100, color: 'gray' }]}
-                            label={<Center><IconArrowBackUp size={22} /></Center>}
-                        />
-                        <div>
-                            <Text c="dimmed" size="xs" tt="uppercase" fw={700}>Withdrawn</Text>
-                            <Text fw={700} size="xl">{stats.withdrawn}</Text>
-                        </div>
-                    </Group>
-                </Card>
-            </Grid.Col>
-            <Grid.Col span={12}>
-                <Card withBorder radius="md" p="lg" style={{ height: 300 }}>
-                    <Text fw={500} mb="lg">Service Request Statuses</Text>
-                    <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                            <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} fill="#8884d8">
-                                {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
-                            </Pie>
-                            <Tooltip />
-                            <Legend />
-                        </PieChart>
-                    </ResponsiveContainer>
-                </Card>
-            </Grid.Col>
-        </Grid>
+        <div>
+            <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="xl" mb="xl">
+                {statCards}
+            </SimpleGrid>
+            <Paper withBorder radius="md" p="lg" style={{ height: 450 }}>
+                <Text size="xl" fw={500} ta="center" mb="lg">Service Request Statuses</Text>
+                <ResponsiveContainer width="100%" height="90%">
+                    <PieChart>
+                        <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={150} label>
+                            {pieData.map((entry) => <Cell key={`cell-${entry.name}`} fill={COLORS[entry.name]} />)}
+                        </Pie>
+                        <Tooltip />
+                        <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                    </PieChart>
+                </ResponsiveContainer>
+            </Paper>
+        </div>
     );
 }

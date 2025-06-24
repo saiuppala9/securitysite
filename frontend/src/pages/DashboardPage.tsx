@@ -1,11 +1,11 @@
-import { Title } from '@mantine/core';
+import { Title, Container } from '@mantine/core';
 import { DashboardStats } from '../components/DashboardStats';
 
 export function DashboardPage() {
     return (
-        <>
-            <Title order={2} mb="lg">Dashboard</Title>
+        <Container fluid my="xl">
+            <Title order={2} ta="center" mb="xl">Dashboard</Title>
             <DashboardStats />
-        </>
+        </Container>
     );
 }

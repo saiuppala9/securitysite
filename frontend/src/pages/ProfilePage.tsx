@@ -85,11 +85,11 @@ export function ProfilePage() {
     };
 
     if (loading || !user) {
-        return <Container style={{ textAlign: 'center', marginTop: '50px' }}><Loader /></Container>;
+        return <Container size="xs" style={{ textAlign: 'center', marginTop: '50px' }}><Loader /></Container>;
     }
 
     return (
-        <Container>
+        <Container size="xs" my="xl">
             <Paper withBorder shadow="md" p={30} mt={30} radius="md">
                 <Title ta="center" mb="lg">My Profile</Title>
                 <form onSubmit={form.onSubmit(handleSubmit)}>

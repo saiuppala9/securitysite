@@ -1,9 +1,21 @@
-import { createTheme, MantineTheme, rgba } from '@mantine/core';
+import { createTheme, MantineTheme } from '@mantine/core';
 
-const theme = createTheme({
-  fontFamily: 'Monaco, Courier, monospace',
-  primaryColor: 'cyan',
+export const theme = createTheme({
+  fontFamily: 'Inter, sans-serif',
+  primaryColor: 'violet',
   colors: {
+    violet: [
+      '#f0ebff',
+      '#dcd1f5',
+      '#b1a2e8',
+      '#8f76db',
+      '#7048ce',
+      '#5a28c2',
+      '#4d1fb8',
+      '#4018a0',
+      '#36148b',
+      '#2d1076',
+    ],
     dark: [
       '#C1C2C5',
       '#A6A7AB',
@@ -16,30 +28,90 @@ const theme = createTheme({
       '#141517',
       '#101113',
     ],
-    cyan: [
-      '#E3FAFC',
-      '#C5F6FA',
-      '#99E9F2',
-      '#66D9E8',
-      '#3BC9DB',
-      '#22B8CF',
-      '#15AABF',
-      '#1098AD',
-      '#0C8599',
-      '#097384',
-    ],
   },
+
   components: {
     Button: {
+      defaultProps: {
+        radius: 'xl',
+        variant: 'filled',
+      },
       styles: (theme: MantineTheme) => ({
         root: {
+          height: '48px',
+          fontSize: '16px',
+          fontWeight: 600,
+          transition: 'transform 200ms ease, box-shadow 200ms ease',
           '&:hover': {
-            backgroundColor: rgba(theme.colors.cyan[7], 0.9),
+            transform: 'translateY(-2px)',
+            boxShadow: theme.shadows.lg,
           },
         },
       }),
     },
+    TextInput: {
+        defaultProps: {
+            radius: 'md',
+            size: 'md',
+        },
+        styles: (theme: MantineTheme) => ({
+            input: {
+                backgroundColor: theme.colors.dark[6],
+                borderColor: theme.colors.dark[4],
+                color: theme.white,
+                '&:focus': {
+                    borderColor: theme.colors.violet[6],
+                },
+            },
+            label: {
+                color: theme.colors.dark[2],
+                fontWeight: 500,
+            }
+        })
+    },
+    PasswordInput: {
+        defaultProps: {
+            radius: 'md',
+            size: 'md',
+        },
+        styles: (theme: MantineTheme) => ({
+            input: {
+                backgroundColor: theme.colors.dark[6],
+                borderColor: theme.colors.dark[4],
+                color: theme.white,
+                '&:focus': {
+                    borderColor: theme.colors.violet[6],
+                },
+            },
+            label: {
+                color: theme.colors.dark[2],
+                fontWeight: 500,
+            }
+        })
+    },
+    Paper: {
+      defaultProps: {
+        p: 'xl',
+        shadow: 'xl',
+        radius: 'lg',
+      },
+      styles: (theme: MantineTheme) => ({
+        root: {
+            backgroundColor: theme.colors.dark[7],
+        }
+      })
+    },
+    Title: {
+      styles: (theme: MantineTheme) => ({
+        root: {
+          fontWeight: 700,
+          color: theme.white,
+        },
+      }),
+    },
+  },
+
+  other: {
+    gradient: 'linear-gradient(45deg, #5a28c2, #4018a0)',
   },
 });
-
-export default theme;
