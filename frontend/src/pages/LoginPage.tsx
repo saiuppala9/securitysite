@@ -1,6 +1,7 @@
 import {
   Container,
   Title,
+  Image,
   TextInput,
   PasswordInput,
   Button,
@@ -12,6 +13,9 @@ import {
   Text,
   Box,
 } from '@mantine/core';
+import brandLogo from '../assets/brand.png';
+import '../components/Logo.css';
+import cyberdashBg from '../assets/cyberdash.jpg';
 import { useForm } from '@mantine/form';
 import { IconX } from '@tabler/icons-react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -63,30 +67,57 @@ export function LoginPage() {
   };
 
   return (
-    <Box style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <Container size="lg" style={{ width: '100%' }}>
-        <Grid grow gutter={0}>
+    <Box
+      style={{
+        minHeight: '100vh',
+        backgroundImage: `url(${cyberdashBg})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '2rem',
+      }}
+    >
+      <Container size="xl" style={{ width: '100%' }}>
+        <Grid grow gutter={0} align="stretch">
           <Grid.Col span={{ base: 12, md: 6 }}>
             <Box
-              p="xl"
               style={{
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'center',
                 height: '100%',
+                paddingRight: '2rem',
+                color: 'white',
               }}
             >
-              <Title order={1} mb="lg">
-                CypherX Security
-              </Title>
-              <Text c="dimmed" mb="xl">
+              <Image
+                src={brandLogo}
+                h={80}
+                w="auto"
+                alt="CypherX Security brand logo"
+                mb="xl"
+                className="brand-logo"
+              />
+              <Text c="gray.2" fz="xl">
                 Advanced security solutions for the modern web. Log in to access your dashboard.
               </Text>
             </Box>
           </Grid.Col>
           <Grid.Col span={{ base: 12, md: 6 }}>
-            <Paper p="xl" shadow="xl" radius="lg">
-              <Title order={2} ta="center" mb="xl">
+            <Paper
+              p="xl"
+              radius="lg"
+              style={theme => ({
+                backgroundColor: 'rgba(10, 20, 40, 0.5)',
+                backdropFilter: 'blur(12px)',
+                border: '1px solid rgba(0, 123, 255, 0.25)',
+                boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
+                height: '100%',
+              })}
+            >
+              <Title order={1} ta="center" mb="xl" c="white" fz="2.5rem">
                 Welcome Back
               </Title>
               {error && (
@@ -98,6 +129,7 @@ export function LoginPage() {
                   onClose={() => setError(null)}
                   mb="md"
                   radius="md"
+                  variant="filled"
                 >
                   {error}
                 </Alert>
@@ -108,7 +140,19 @@ export function LoginPage() {
                   label="Email Address"
                   placeholder="you@yourcompany.com"
                   {...form.getInputProps('email')}
-                  size="md"
+                  size="lg"
+                  styles={theme => ({
+                    label: { color: theme.colors.gray[3], marginBottom: '0.5rem' },
+                    input: {
+                      backgroundColor: 'rgba(0, 0, 0, 0.25)',
+                      border: `1px solid ${theme.colors.blue[9]}`,
+                      color: 'white',
+                      fontSize: theme.fontSizes.md,
+                      '&::placeholder': {
+                        color: theme.colors.gray[6],
+                      },
+                    },
+                  })}
                 />
                 <PasswordInput
                   label="Password"
@@ -116,14 +160,33 @@ export function LoginPage() {
                   required
                   mt="lg"
                   {...form.getInputProps('password')}
-                  size="md"
+                  size="lg"
+                  styles={theme => ({
+                    label: { color: theme.colors.gray[3], marginBottom: '0.5rem' },
+                    input: {
+                      backgroundColor: 'rgba(0, 0, 0, 0.25)',
+                      border: `1px solid ${theme.colors.blue[9]}`,
+                      color: 'white',
+                      fontSize: theme.fontSizes.md,
+                      '&::placeholder': {
+                        color: theme.colors.gray[6],
+                      },
+                    },
+                  })}
                 />
-                <Button fullWidth mt="xl" type="submit" size="lg">
+                <Button
+                  fullWidth
+                  mt="xl"
+                  type="submit"
+                  size="lg"
+                  variant="gradient"
+                  gradient={{ from: 'blue', to: 'cyan', deg: 90 }}
+                >
                   Sign In
                 </Button>
               </form>
-              <Group justify="center" mt="md">
-                <Anchor component={Link} to="/register" size="sm" c="dimmed">
+              <Group justify="center" mt="lg">
+                <Anchor component={Link} to="/register" size="sm" c="gray.4">
                   Don't have an account? Register
                 </Anchor>
               </Group>

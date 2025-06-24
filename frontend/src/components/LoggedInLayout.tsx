@@ -1,6 +1,7 @@
 import { AppShell, Container } from '@mantine/core';
 import { Outlet } from 'react-router-dom';
 import { Header } from './Header';
+import securityBg from '../assets/security.gif';
 
 export function LoggedInLayout() {
   return (
@@ -8,7 +9,14 @@ export function LoggedInLayout() {
       <AppShell.Header>
         <Header />
       </AppShell.Header>
-      <AppShell.Main>
+      <AppShell.Main
+        style={{
+          backgroundImage: `url(${securityBg})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundAttachment: 'fixed',
+        }}
+      >
         <Container size="xl">
             <Outlet />
         </Container>

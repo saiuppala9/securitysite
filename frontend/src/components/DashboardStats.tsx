@@ -19,6 +19,13 @@ export function DashboardStats() {
     const [loading, setLoading] = useState(true);
     const theme = useMantineTheme();
 
+    const glassStyle = {
+        backgroundColor: 'rgba(10, 20, 40, 0.65)',
+        backdropFilter: 'blur(10px) saturate(120%)',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        color: 'white',
+    };
+
     useEffect(() => {
         axiosInstance.get<StatsData>('/api/service-requests/stats/')
             .then(response => {
@@ -37,9 +44,9 @@ export function DashboardStats() {
 
     if (!stats || stats.total_requests === 0) {
         return (
-            <Card withBorder radius="md" p="xl" mt="md">
+            <Card radius="md" p="xl" mt="md" style={glassStyle}>
                 <Text ta="center" size="lg" fw={500}>No service requests yet!</Text>
-                <Text ta="center" c="dimmed" mt="xs">Your dashboard will show stats here once you request a service.</Text>
+                <Text ta="center" c="gray.3" mt="xs">Your dashboard will show stats here once you request a service.</Text>
             </Card>
         );
     }
@@ -63,7 +70,7 @@ export function DashboardStats() {
     ];
 
     const statCards = data.map((stat) => (
-        <Paper withBorder radius="md" p="lg" key={stat.title}>
+        <Paper radius="md" p="lg" key={stat.title} style={glassStyle}>
             <Group>
                 <RingProgress
                     size={100}
@@ -77,7 +84,7 @@ export function DashboardStats() {
                     }
                 />
                 <div>
-                    <Text c="dimmed" size="md" tt="uppercase" fw={700}>{stat.title}</Text>
+                    <Text c="gray.3" size="md" tt="uppercase" fw={700}>{stat.title}</Text>
                     <Text fw={700} size="3rem">{stat.value}</Text>
                 </div>
             </Group>
@@ -98,14 +105,14 @@ export function DashboardStats() {
             <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="xl" mb="xl">
                 {statCards}
             </SimpleGrid>
-            <Paper withBorder radius="md" p="lg" style={{ height: 450 }}>
+            <Paper radius="md" p="lg" style={{ ...glassStyle, height: 450 }}>
                 <Text size="xl" fw={500} ta="center" mb="lg">Service Request Statuses</Text>
                 <ResponsiveContainer width="100%" height="90%">
                     <PieChart>
                         <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={150} label>
                             {pieData.map((entry) => <Cell key={`cell-${entry.name}`} fill={COLORS[entry.name]} />)}
                         </Pie>
-                        <Tooltip />
+                        <Tooltip contentStyle={glassStyle} />
                         <Legend wrapperStyle={{ paddingTop: '20px' }} />
                     </PieChart>
                 </ResponsiveContainer>

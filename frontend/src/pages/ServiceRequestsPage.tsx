@@ -1,5 +1,5 @@
-import { Container, Title, Table, Button, Group, Alert, Badge, Collapse, Box, Text, FileInput, Image, Modal, Select } from '@mantine/core';
-import { useState, useEffect, useMemo } from 'react';
+import { Box, Container, Title, Table, Button, Group, Alert, Badge, Collapse, Text, FileInput, Image, Modal, Select, Paper, ThemeIcon } from '@mantine/core';
+import { useState, useEffect, useMemo, Fragment } from 'react';
 import axiosInstance from '../utils/axiosInstance';
 import { notifications } from '@mantine/notifications';
 import { IconChevronUp, IconChevronDown, IconX } from '@tabler/icons-react';
@@ -39,8 +39,8 @@ export function ServiceRequestsPage() {
   const [uploadModalOpened, setUploadModalOpened] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<ServiceRequest | null>(null);
 
-      const isPartialAdmin = user?.groups?.includes('Partial Access Admin');
-      const isFullAdmin = user?.is_superuser || user?.groups?.includes('Main Admin') || user?.groups?.includes('Full Access Admin');
+  const isPartialAdmin = user?.groups?.includes('Partial Access Admin');
+  const isFullAdmin = user?.is_superuser || user?.groups?.includes('Main Admin') || user?.groups?.includes('Full Access Admin');
 
   const fetchRequests = () => {
     axiosInstance.get<ServiceRequest[]>('/api/service-requests/')
@@ -166,7 +166,6 @@ export function ServiceRequestsPage() {
     }
   };
 
-  // Create a memoized list of assignable admins, including an 'Assign to Me' option
   const assignableAdmins = useMemo(() => {
     if (!user) return [];
     const otherAdmins = admins
@@ -186,10 +185,8 @@ export function ServiceRequestsPage() {
     const isAssignedToCurrentUser = user ? request.assigned_to === user.id : false;
     const nonAssignableStatuses = ['completed', 'rejected'];
 
-    // Assignment is possible for any status except completed or rejected
     const canAssignOrReassign = isFullAdmin && !nonAssignableStatuses.includes(request.status);
 
-    // 1. Determine content for the 'Assigned To' column
     let assignedToContent;
     if (canAssignOrReassign) {
       assignedToContent = (
@@ -206,9 +203,7 @@ export function ServiceRequestsPage() {
       assignedToContent = request.assigned_to_email || 'Unassigned';
     }
 
-    // 2. Determine content for the 'Actions' column
     const actions = [];
-    // Show Approve/Reject buttons only when the request is assigned and pending approval
     if (isFullAdmin && request.status === 'pending_approval' && isAssigned) {
       actions.push(
         <Button
@@ -230,7 +225,6 @@ export function ServiceRequestsPage() {
       );
     }
 
-    // Show 'Upload Report' button if the request is in progress and assigned to the current user
     if (request.status === 'in_progress' && isAssignedToCurrentUser) {
       actions.push(
         <Button key="upload-report" size="xs" onClick={(e) => { e.stopPropagation(); handleOpenUploadModal(request); }}>

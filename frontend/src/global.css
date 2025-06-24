@@ -1,0 +1,8 @@
+body {
+  /* Default text color for dark theme */
+  color: #c1c2c5;
+}
+
+.mantine-Title-root, h1, h2, h3, h4, h5, h6 {
+  color: white !important;
+}

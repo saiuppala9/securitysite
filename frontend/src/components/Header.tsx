@@ -2,13 +2,15 @@ import {
   Container,
   Group,
   Button,
-  Title,
   Menu,
   Avatar,
   Text,
   Box,
   UnstyledButton,
+  Image,
 } from '@mantine/core';
+import brandLogo from '../assets/brand.png';
+import './Logo.css';
 import { Link, NavLink as RouterNavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -130,7 +132,7 @@ export function Header() {
       <Container size="xl" h="100%">
         <Group justify="space-between" h="100%">
           <Link to="/" style={{ textDecoration: 'none', color: 'inherit' }}>
-            <Title order={2}>CypherX</Title>
+            <Image src={brandLogo} h={40} w="auto" alt="CypherX brand logo" className="brand-logo" />
           </Link>
 
           {user && <Group gap="xs">{items}</Group>}

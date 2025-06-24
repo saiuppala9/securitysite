@@ -121,7 +121,7 @@ export function AdminDashboardPage() {
   }
 
   return (
-    <Container my="lg">
+    <Container fluid my="lg" p="md">
       <Title order={2} mb="xl">
         Admin Dashboard
       </Title>
