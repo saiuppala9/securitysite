@@ -83,7 +83,7 @@ export function ChangePasswordModal({ opened, onClose }: ChangePasswordModalProp
     };
 
     return (
-        <Modal opened={opened} onClose={onClose} title="Change Password" centered>
+        <Modal opened={opened} onClose={onClose} title="Change Password" centered classNames={{ content: 'glass-card' }}>
             <form onSubmit={form.onSubmit(handleSubmit)}>
                 <PasswordInput
                     label="Current Password"

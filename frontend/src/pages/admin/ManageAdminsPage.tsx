@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Title, Table, Button, Group, Alert, Loader, TextInput, PasswordInput, Select, Paper, Modal, Text } from '@mantine/core';
+import { Container, Title, Table, Button, Group, Alert, Loader, TextInput, Select, Paper, Modal, Text } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import axiosInstance from '../../utils/axiosInstance';
 import { notifications } from '@mantine/notifications';
@@ -138,7 +138,7 @@ export function ManageAdminsPage() {
       <Container my="xl">
         <Title order={2} mb="lg">Manage Admins</Title>
 
-        <Paper withBorder shadow="md" p={30} mt={30} radius="md">
+        <Paper shadow="md" p={30} mt={30} radius="md" className="glass-card">
           <Title order={3} mb="md">Add New Admin</Title>
           <form onSubmit={form.onSubmit(handleAddAdmin)}>
             <TextInput label="Email" placeholder="admin@example.com" {...form.getInputProps('email')} required />

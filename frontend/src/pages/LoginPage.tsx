@@ -1,199 +1,147 @@
 import {
-  Container,
-  Title,
-  Image,
   TextInput,
   PasswordInput,
-  Button,
-  Paper,
-  Alert,
-  Group,
   Anchor,
-  Grid,
+  Paper,
+  Title,
   Text,
+  Button,
   Box,
+  Flex,
+  Image,
+  Stack,
 } from '@mantine/core';
-import brandLogo from '../assets/brand.png';
-import '../components/Logo.css';
-import cyberdashBg from '../assets/cyberdash.jpg';
 import { useForm } from '@mantine/form';
-import { IconX } from '@tabler/icons-react';
+import { zodResolver } from 'mantine-form-zod-resolver';
+import { z } from 'zod';
 import { Link, useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { notifications } from '@mantine/notifications';
+import { IconX } from '@tabler/icons-react';
 import { useAuth } from '../context/AuthContext';
-import axiosInstance from '../utils/axiosInstance';
-import { useState } from 'react';
+import brandLogo from '../assets/brand.png';
+import backgroundImage from '../assets/cyberdash.jpg';
 
-interface AuthTokenResponse {
+const schema = z.object({
+  email: z.string().email({ message: 'Invalid email' }),
+  password: z.string().min(1, { message: 'Password is required' }),
+});
+
+interface LoginResponse {
   access: string;
   refresh: string;
 }
 
 export function LoginPage() {
-  const navigate = useNavigate();
   const { login } = useAuth();
-  const [error, setError] = useState<string | null>(null);
-
   const form = useForm({
     initialValues: {
       email: '',
       password: '',
     },
-    validate: {
-      email: (value: string) => (/^\S+@\S+$/.test(value) ? null : 'Invalid email'),
-      password: (value: string) => (value.length < 1 ? 'Password is required' : null),
-    },
+    validate: zodResolver(schema),
   });
 
   const handleSubmit = async (values: typeof form.values) => {
     try {
-      setError(null);
-      const response = await axiosInstance.post<AuthTokenResponse>('/auth/jwt/create/', values);
+      const response = await axios.post<LoginResponse>('http://localhost:8000/auth/jwt/create/', {
+        email: values.email,
+        password: values.password,
+      });
+
       const { access, refresh } = response.data;
+      
+      // Store tokens in localStorage
+      localStorage.setItem('authTokens', JSON.stringify({ access, refresh }));
+      
+      // Decode token to get user data
+      const decodedToken: any = JSON.parse(atob(access.split('.')[1]));
+      const userData = {
+        id: decodedToken.user_id,
+        email: decodedToken.email,
+        username: decodedToken.username,
+        first_name: decodedToken.first_name,
+        last_name: decodedToken.last_name,
+        is_staff: decodedToken.is_staff,
+        is_superuser: decodedToken.is_superuser,
+        groups: decodedToken.groups,
+      };
+      
+      // Store user data in localStorage
+      localStorage.setItem('userData', JSON.stringify(userData));
+      
+      // Also use the context login for compatibility
+      await login(access, refresh);
 
-      const user = await login(access, refresh);
+      notifications.show({
+        title: 'Login Successful',
+        message: 'Welcome back!',
+        color: 'teal',
+      });
 
-      if (user.is_staff) {
-        navigate('/admin/dashboard');
-      } else {
-        navigate('/dashboard');
-      }
-    } catch (err: any) {
-      if (err.response && err.response.data) {
-        setError(err.response.data.detail || 'Failed to login. Please check your credentials.');
-      } else {
-        setError('An unexpected error occurred.');
-      }
+      // Use direct navigation instead of React Router
+      window.location.href = '/dashboard';
+    } catch (error) {
+      console.error('Login error:', error);
+      notifications.show({
+        title: 'Login Failed',
+        message: 'Invalid credentials or server error. Please try again.',
+        color: 'red',
+        icon: <IconX />,
+      });
     }
   };
 
   return (
     <Box
       style={{
-        minHeight: '100vh',
-        backgroundImage: `url(${cyberdashBg})`,
+        backgroundImage: `url(${backgroundImage})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '2rem',
+        minHeight: '100vh',
       }}
     >
-      <Container size="xl" style={{ width: '100%' }}>
-        <Grid grow gutter={0} align="stretch">
-          <Grid.Col span={{ base: 12, md: 6 }}>
-            <Box
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                height: '100%',
-                paddingRight: '2rem',
-                color: 'white',
-              }}
-            >
-              <Image
-                src={brandLogo}
-                h={80}
-                w="auto"
-                alt="CypherX Security brand logo"
-                mb="xl"
-                className="brand-logo"
+      <Flex justify="center" align="center" style={{ minHeight: '100vh', width: '100%' }}>
+        <Stack align="center" gap="xl">
+          <Image src={brandLogo} h={120} w="auto" fit="contain" className="brand-logo" />
+          <Paper
+            withBorder
+            shadow="md"
+            p={30}
+            radius="md"
+            className="glass-card"
+            style={{ width: 420 }}
+          >
+            <Title ta="center" order={2} mb="xl">
+              Welcome Back
+            </Title>
+            <form onSubmit={form.onSubmit(handleSubmit)}>
+              <TextInput
+                label="Email Address"
+                placeholder="you@yourcompany.com"
+                required
+                {...form.getInputProps('email')}
               />
-              <Text c="gray.2" fz="xl">
-                Advanced security solutions for the modern web. Log in to access your dashboard.
-              </Text>
-            </Box>
-          </Grid.Col>
-          <Grid.Col span={{ base: 12, md: 6 }}>
-            <Paper
-              p="xl"
-              radius="lg"
-              style={theme => ({
-                backgroundColor: 'rgba(10, 20, 40, 0.5)',
-                backdropFilter: 'blur(12px)',
-                border: '1px solid rgba(0, 123, 255, 0.25)',
-                boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
-                height: '100%',
-              })}
-            >
-              <Title order={1} ta="center" mb="xl" c="white" fz="2.5rem">
-                Welcome Back
-              </Title>
-              {error && (
-                <Alert
-                  icon={<IconX size="1rem" />}
-                  title="Login Failed"
-                  color="red"
-                  withCloseButton
-                  onClose={() => setError(null)}
-                  mb="md"
-                  radius="md"
-                  variant="filled"
-                >
-                  {error}
-                </Alert>
-              )}
-              <form onSubmit={form.onSubmit(handleSubmit)}>
-                <TextInput
-                  required
-                  label="Email Address"
-                  placeholder="you@yourcompany.com"
-                  {...form.getInputProps('email')}
-                  size="lg"
-                  styles={theme => ({
-                    label: { color: theme.colors.gray[3], marginBottom: '0.5rem' },
-                    input: {
-                      backgroundColor: 'rgba(0, 0, 0, 0.25)',
-                      border: `1px solid ${theme.colors.blue[9]}`,
-                      color: 'white',
-                      fontSize: theme.fontSizes.md,
-                      '&::placeholder': {
-                        color: theme.colors.gray[6],
-                      },
-                    },
-                  })}
-                />
-                <PasswordInput
-                  label="Password"
-                  placeholder="Your password"
-                  required
-                  mt="lg"
-                  {...form.getInputProps('password')}
-                  size="lg"
-                  styles={theme => ({
-                    label: { color: theme.colors.gray[3], marginBottom: '0.5rem' },
-                    input: {
-                      backgroundColor: 'rgba(0, 0, 0, 0.25)',
-                      border: `1px solid ${theme.colors.blue[9]}`,
-                      color: 'white',
-                      fontSize: theme.fontSizes.md,
-                      '&::placeholder': {
-                        color: theme.colors.gray[6],
-                      },
-                    },
-                  })}
-                />
-                <Button
-                  fullWidth
-                  mt="xl"
-                  type="submit"
-                  size="lg"
-                  variant="gradient"
-                  gradient={{ from: 'blue', to: 'cyan', deg: 90 }}
-                >
-                  Sign In
-                </Button>
-              </form>
-              <Group justify="center" mt="lg">
-                <Anchor component={Link} to="/register" size="sm" c="gray.4">
-                  Don't have an account? Register
+              <PasswordInput
+                label="Password"
+                placeholder="Your password"
+                required
+                mt="md"
+                {...form.getInputProps('password')}
+              />
+              <Button fullWidth mt="xl" type="submit" variant="gradient" gradient={{ from: 'blue', to: 'cyan' }}>
+                Sign In
+              </Button>
+              <Text color="dimmed" size="sm" ta="center" mt="md">
+                Don't have an account?{' '}
+                <Anchor component={Link} to="/register" size="sm">
+                  Register
                 </Anchor>
-              </Group>
-            </Paper>
-          </Grid.Col>
-        </Grid>
-      </Container>
+              </Text>
+            </form>
+          </Paper>
+        </Stack>
+      </Flex>
     </Box>
   );
 }

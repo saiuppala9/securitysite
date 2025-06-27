@@ -31,12 +31,43 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [tokens, setTokens] = useState<AuthTokens | null>(null);
   const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    const storedTokens = localStorage.getItem('authTokens');
+    if (storedTokens) {
+      try {
+        const tokens = JSON.parse(storedTokens);
+        const decodedToken: any = JSON.parse(atob(tokens.access.split('.')[1]));
+        const userData: User = {
+          id: decodedToken.user_id,
+          email: decodedToken.email,
+          username: decodedToken.username,
+          first_name: decodedToken.first_name,
+          last_name: decodedToken.last_name,
+          is_staff: decodedToken.is_staff,
+          is_superuser: decodedToken.is_superuser,
+          groups: decodedToken.groups,
+        };
+        setUser(userData);
+        setTokens(tokens);
+      } catch (error) {
+        console.error('Failed to parse auth tokens from localStorage', error);
+        localStorage.removeItem('authTokens');
+      }
+    }
+    setLoading(false);
+  }, []);
   const [loading, setLoading] = useState(true);
 
   const logout = () => {
     setTokens(null);
     setUser(null);
     localStorage.removeItem('authTokens');
+    delete axiosInstance.defaults.headers.common['Authorization'];
+    
+    // Redirect to appropriate login page based on current route
+    const isAdminRoute = window.location.pathname.startsWith('/admin');
+    window.location.href = isAdminRoute ? '/admin/login' : '/login';
   };
 
   useEffect(() => {
@@ -61,6 +92,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const login = async (access: string, refresh: string): Promise<User> => {
+    setLoading(true);
     const newTokens = { access, refresh };
     localStorage.setItem('authTokens', JSON.stringify(newTokens));
     setTokens(newTokens);
@@ -70,11 +102,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       const { data: user } = await axiosInstance.get<User>('/auth/users/me/');
+      
+      // Check if this is an admin route
+      const isAdminRoute = window.location.pathname.includes('/admin');
+      
+      // If this is an admin route but user is not staff, throw error
+      if (isAdminRoute && !user.is_staff) {
+        localStorage.removeItem('authTokens');
+        delete axiosInstance.defaults.headers.common['Authorization'];
+        throw new Error('You do not have permission to access the admin area.');
+      }
+      
       setUser(user);
+      
+      // Handle redirections based on user type and current route
+      if (user.is_staff && isAdminRoute) {
+        window.location.href = '/admin/dashboard';
+      } else if (!user.is_staff && isAdminRoute) {
+        window.location.href = '/login';
+      } else if (!isAdminRoute) {
+        window.location.href = '/dashboard';
+      }
+      
       return user;
     } catch (error) {
-      logout();
+      // Clear any stored tokens and headers
+      localStorage.removeItem('authTokens');
+      delete axiosInstance.defaults.headers.common['Authorization'];
+      setTokens(null);
+      setUser(null);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 

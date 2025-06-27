@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Container, Title, Table, Button, Group, Image, Modal, TextInput, Textarea, NumberInput, FileInput } from '@mantine/core';
+import { Container, Title, Table, Button, Group, Image, Modal, TextInput, Textarea, NumberInput, FileInput, Paper } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import axiosInstance from '../utils/axiosInstance';
 import { notifications } from '@mantine/notifications';
@@ -145,7 +145,7 @@ const ManageServicesPage = () => {
           setEditingService(null);
           form.reset();
         }}
-        title={editingService ? 'Edit Service' : 'Add New Service'}
+        title={editingService ? 'Edit Service' : 'Add New Service'} classNames={{ content: 'glass-card' }}
       >
         <form onSubmit={form.onSubmit(handleSubmit)}>
           <TextInput label="Name" {...form.getInputProps('name')} required />
@@ -158,7 +158,7 @@ const ManageServicesPage = () => {
         </form>
       </Modal>
 
-      <Table striped withTableBorder>
+      <Paper p="md" radius="md" className="glass-card"><Table withTableBorder={false} className="transparent-table">
         <Table.Thead>
           <Table.Tr>
             <Table.Th>Image</Table.Th>
@@ -169,7 +169,7 @@ const ManageServicesPage = () => {
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>{rows}</Table.Tbody>
-      </Table>
+      </Table></Paper>
     </Container>
   );
 };

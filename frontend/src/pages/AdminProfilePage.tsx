@@ -96,7 +96,7 @@ export function AdminProfilePage() {
 
       <Container size="sm">
         <Title order={2} mb="xl">Admin Profile</Title>
-        <Paper withBorder shadow="md" p={30} mt={30} radius="md">
+        <Paper shadow="md" p={30} mt={30} radius="md" className="glass-card">
           <Title order={4}>Update Your Details</Title>
           <form onSubmit={detailsForm.onSubmit((values: typeof detailsForm.values) => handleInitiateUpdate('details', values))}>
             <TextInput label="Email" placeholder={user?.email} disabled mt="md" />
@@ -106,7 +106,7 @@ export function AdminProfilePage() {
           </form>
         </Paper>
 
-        <Paper withBorder shadow="md" p={30} mt={30} radius="md">
+        <Paper shadow="md" p={30} mt={30} radius="md" className="glass-card">
           <Title order={4}>Change Password</Title>
           <form onSubmit={passwordForm.onSubmit((values: typeof passwordForm.values) => handleInitiateUpdate('password', values))}>
             <PasswordInput label="New Password" {...passwordForm.getInputProps('new_password')} required mt="md" />

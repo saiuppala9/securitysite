@@ -1,4 +1,8 @@
 .brand-logo {
-  /* Adds a white glow around the logo's content to make it pop on dark backgrounds */
-  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.5));
+  /* Enhance logo visibility with a multi-layered glow effect */
+  filter: 
+    drop-shadow(0 0 3px rgba(255, 255, 255, 1))
+    drop-shadow(0 0 8px rgba(255, 255, 255, 0.8))
+    drop-shadow(0 0 15px rgba(77, 189, 255, 0.7))
+    drop-shadow(0 0 25px rgba(77, 189, 255, 0.5));
 }

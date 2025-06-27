@@ -34,7 +34,7 @@ const STATUS_COLORS: { [key: string]: string } = {
 // StatCard component
 function StatCard({ title, value, icon: Icon, color }: { title: string; value: number | string; icon: React.ElementType; color: string }) {
   return (
-    <Paper withBorder p="md" radius="md">
+    <Paper withBorder p="md" radius="md" className="glass-card">
       <Group justify="space-between">
         <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
           {title}
@@ -107,7 +107,7 @@ export function AdminDashboardPage() {
         <Title order={2} mb="xl">
           Admin Dashboard
         </Title>
-        <Paper withBorder p="xl" radius="md" ta="center">
+        <Paper withBorder p="xl" radius="md" ta="center" className="glass-card">
           <IconAlertTriangle size={48} stroke={1.5} />
           <Title order={3} mt="md">
             Could not load data
@@ -136,7 +136,7 @@ export function AdminDashboardPage() {
         <StatCard title="Withdrawn (30d)" value={stats.withdrawn} icon={IconArrowBackUp} color="gray" />
       </SimpleGrid>
 
-      <Paper withBorder p="md" radius="md" shadow="sm" style={{ height: 400 }}>
+      <Paper withBorder p="md" radius="md" shadow="sm" className="glass-card" style={{ height: 400 }}>
         <Text fw={500} mb="md" ta="center">
           {isPartialAdmin ? 'Your Service Requests by Status' : 'All Service Requests by Status'}
         </Text>

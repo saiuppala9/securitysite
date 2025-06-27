@@ -1,0 +1,1 @@
+Account confirmed on {{ site_name }}

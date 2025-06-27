@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 from pathlib import Path
 import os
 from datetime import timedelta
+from main.logo_base64 import EMAIL_LOGO_BASE64
+import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -25,12 +27,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-z$)p#5o&@7(8&^t#f!x$y^q#e@=q#5&7y$s*!b#v&g=q#5&7y$s*!b#v&g')
 
 # Key for encrypting sensitive data
-ENCRYPTION_KEY = b'qoaITmJdlY5XItbBa5herscqsp5os4t0Hn2gPjvUu6c='
+ENCRYPTION_KEY = os.environ.get('ENCRYPTION_KEY', 'qoaITmJdlY5XItbBa5herscqsp5os4t0Hn2gPjvUu6c=').encode()
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.herokuapp.com', 'cyphex.me', '*.cyphex.me']
 
 
 # Application definition
@@ -53,6 +55,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -67,14 +70,15 @@ ROOT_URLCONF = 'main.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, 'main/templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+                                'django.contrib.messages.context_processors.messages',
+                'main.context_processors.email_logo',
             ],
         },
     },
@@ -87,6 +91,8 @@ WSGI_APPLICATION = 'main.wsgi.application'
 CORS_ORIGIN_ALLOW_ALL = True
 
 CORS_ALLOWED_ORIGINS = [
+    'https://cyphex.me',
+    'https://www.cyphex.me',
     'http://localhost:3000',
     'http://127.0.0.1:3000',
 ]
@@ -94,6 +100,8 @@ CORS_ALLOWED_ORIGINS = [
 CORS_ALLOW_CREDENTIALS = True
 
 CSRF_TRUSTED_ORIGINS = [
+    'https://cyphex.me',
+    'https://www.cyphex.me',
     'http://localhost:3000',
     'http://127.0.0.1:3000',
 ]
@@ -103,10 +111,10 @@ CSRF_TRUSTED_ORIGINS = [
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': dj_database_url.config(
+        default='sqlite:///' + str(BASE_DIR / 'db.sqlite3'),
+        conn_max_age=600
+    )
 }
 
 
@@ -144,19 +152,17 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
-STATIC_URL = 'static/'
-STATICFILES_DIRS = [os.path.join(BASE_DIR, 'build/static')]
-STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # PayU Configuration
-PAYU_MERCHANT_KEY = os.getenv('PAYU_MERCHANT_KEY', 'XFCm39')
-PAYU_MERCHANT_SALT = os.getenv('PAYU_MERCHANT_SALT', 'D6H7cJfacCcSZEqE0MtWjSDm0haBMDFu')
-PAYU_MODE = os.getenv('PAYU_MODE', 'LIVE')  # Set to 'LIVE' for production
-FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
-BACKEND_URL = os.getenv('BACKEND_URL', 'http://localhost:8000')
+PAYU_MERCHANT_KEY = os.environ.get('PAYU_MERCHANT_KEY', 'XFCm39')
+PAYU_MERCHANT_SALT = os.environ.get('PAYU_MERCHANT_SALT', 'D6H7cJfacCcSZEqE0MtWjSDm0haBMDFu')
+PAYU_MODE = os.environ.get('PAYU_MODE', 'LIVE')  # Set to 'LIVE' for production
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
@@ -168,13 +174,16 @@ ADMIN_EMAIL = 'admin@cyphex.com' # The email address for admin notifications
 
 AUTH_USER_MODEL = 'api.UserAccount'
 
-
+# Domain name for email templates
+DOMAIN_NAME = 'http://localhost:8000'  # Using localhost for development
 
 # Frontend URL for generating links in emails
-FRONTEND_URL = 'http://localhost:3000'
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://cyphex.me')
 LOGIN_URL = '/admin/login/'
+LOGIN_REDIRECT_URL = '/admin/dashboard/'
 
 AUTHENTICATION_BACKENDS = (
+    'api.backends.EmailBackend',
     'django.contrib.auth.backends.ModelBackend',
 )
 
@@ -187,28 +196,31 @@ SITE_ID = 1
 
 # Email settings for Brevo (formerly Sendinblue)
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp-relay.brevo.com'
-EMAIL_PORT = 587
-EMAIL_HOST_USER = '8f32d6001@smtp-brevo.com'
-EMAIL_HOST_PASSWORD = 'Obcfa4V6MPhmI1rv'
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp-relay.brevo.com')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '8f32d6001@smtp-brevo.com')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', 'Obcfa4V6MPhmI1rv')
 EMAIL_USE_TLS = True
-DEFAULT_FROM_EMAIL = 'CYPHEX <saiuppala2030@gmail.com>'
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'CYPHEX <security@cyphex.me>')
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-        'rest_framework.authentication.SessionAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
     ),
 }
 
 SIMPLE_JWT = {
-      'AUTH_HEADER_TYPES': ('Bearer',),
-   'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
-   'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
-   'ROTATE_REFRESH_TOKENS': True,
-   'BLACKLIST_AFTER_ROTATION': True,
-   'USER_ID_FIELD': 'id',
-   'USER_ID_CLAIM': 'user_id',
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'USER_ID_FIELD': 'id',
+    'USER_ID_CLAIM': 'user_id',
+    'TOKEN_OBTAIN_SERIALIZER': 'api.serializers.CustomTokenObtainPairSerializer',
 }
 
 # Djoser settings
@@ -219,19 +231,32 @@ DJOSER = {
     'SEND_CONFIRMATION_EMAIL': True,
     'SET_PASSWORD_RETYPE': True,
     'PASSWORD_RESET_CONFIRM_URL': 'password/reset/confirm/{uid}/{token}',
-
     'ACTIVATION_URL': 'activate/{uid}/{token}',
     'SEND_ACTIVATION_EMAIL': True,
     'SERIALIZERS': {
-        'user': 'api.serializers.CustomUserSerializer',
-        'current_user': 'api.serializers.CustomUserSerializer',
+        'user_create': 'api.serializers.UserCreateSerializer',
+        'user': 'api.serializers.UserSerializer',
+        'current_user': 'api.serializers.UserSerializer',
+        'user_delete': 'djoser.serializers.UserDeleteSerializer',
     },
     'EMAIL': {
-        'activation': 'djoser.email.ActivationEmail',
-        'confirmation': 'djoser.email.ConfirmationEmail',
-        'password_reset': 'djoser.email.PasswordResetEmail',
-        'password_changed_confirmation': 'djoser.email.PasswordChangedConfirmationEmail',
-    }
+        'activation': 'main.email.ActivationEmail',
+        'confirmation': 'main.email.ConfirmationEmail',
+        'password_reset': 'main.email.PasswordResetEmail',
+        'password_changed_confirmation': 'main.email.PasswordChangedConfirmationEmail',
+    },
+    'TEMPLATES': {
+        'activation': 'email/activation.html',
+        'confirmation': 'email/confirmation.html',
+        'password_reset': 'email/password_reset.html',
+        'password_changed_confirmation': 'email/password_changed_confirmation.html',
+    },
+    'SITE_NAME': 'CYPHEX',
+    'DOMAIN': FRONTEND_URL.replace('http://', '').replace('https://', ''),  # Use the frontend URL without protocol
+    'PROTOCOL': 'http' if DEBUG else 'https',
+    'EMAIL_CONTEXT_PROCESSORS': [
+        'main.context_processors.email_logo',
+    ],
 }
 
 
@@ -249,5 +274,3 @@ if not DEBUG:
     # Disabling the server header is a web server configuration, not a Django setting.
     # For example, in Nginx, you would use 'server_tokens off;'.
     # In Gunicorn, you can change the 'Server' header via the --header-name option.
-
-

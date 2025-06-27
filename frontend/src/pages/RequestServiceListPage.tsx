@@ -45,7 +45,7 @@ export function RequestServiceListPage() {
       {!loading && !error && (
         <SimpleGrid cols={{ base: 1, md: 2 }} spacing="xl">
           {services.map(service => (
-            <Card shadow="sm" padding="lg" radius="md" withBorder key={service.id} className={classes.card}>
+            <Card shadow="sm" padding="lg" radius="md" key={service.id} className={`${classes.card} glass-card`}>
               <Card.Section>
                 <Image
                   src={service.image || 'https://via.placeholder.com/400x250?text=No+Image'}

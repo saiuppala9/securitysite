@@ -1,9 +1,8 @@
 import { Container, Title, Text, Button, Grid, Card, TextInput, Textarea, SimpleGrid, Box, List, ThemeIcon, rem } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconShieldCheck, IconApi, IconFirewall, IconSchool, IconAlertTriangle, IconQuestionMark } from '@tabler/icons-react';
+import { IconShieldCheck, IconApi, IconSchool, IconAlertTriangle } from '@tabler/icons-react';
 import CyberBackground from '../components/Cyber_background';
-import { useState, useEffect } from 'react';
 
 const serviceDetails = {
   'Penetration Testing': {

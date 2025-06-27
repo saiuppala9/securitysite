@@ -1,25 +1,40 @@
+/*
+  Styles to create a subtle, neutral 'glass tile' effect for the accordion.
+*/
+
 .accordionItem {
-  background-color: var(--mantine-color-dark-6);
-  border: 1px solid var(--mantine-color-dark-4);
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1) !important;
   border-radius: var(--mantine-radius-md);
+  overflow: hidden;
   margin-bottom: var(--mantine-spacing-lg);
   transition: box-shadow 0.2s ease;
 }
 
 .accordionItem:hover {
-  box-shadow: var(--mantine-shadow-lg);
+  box-shadow: 0 8px 40px 0 rgba(0, 0, 0, 0.15) !important;
 }
 
 .accordionControl {
+  background-color: transparent !important;
+  color: #343a40 !important; /* Dark text for light background */
   padding: var(--mantine-spacing-md) var(--mantine-spacing-lg);
-  border-radius: var(--mantine-radius-md);
+  border-bottom: none !important;
 }
 
 .accordionControl:hover {
-  background-color: var(--mantine-color-dark-5);
+    background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.accordionItem[data-active] > .accordionControl {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
 }
 
 .accordionPanel {
+  background-color: transparent !important;
+  color: #343a40 !important; /* Dark text */
   padding: var(--mantine-spacing-lg);
   padding-top: 0;
 }
@@ -29,4 +44,5 @@
   font-weight: 700;
   letter-spacing: 0.5px;
   text-transform: uppercase;
+  text-shadow: none;
 }

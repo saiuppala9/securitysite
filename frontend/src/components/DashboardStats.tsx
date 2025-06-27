@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { SimpleGrid, Paper, Text, Group, RingProgress, Center, useMantineTheme, Card, Loader } from '@mantine/core';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import axiosInstance from '../utils/axiosInstance';
-import { IconCheck, IconClock, IconX, IconLoader, IconArrowBackUp, IconHourglass } from '@tabler/icons-react';
+import { IconCheck, IconClock, IconX, IconArrowBackUp, IconHourglass } from '@tabler/icons-react';
 
 interface StatsData {
     total_requests: number;
@@ -19,14 +19,25 @@ export function DashboardStats() {
     const [loading, setLoading] = useState(true);
     const theme = useMantineTheme();
 
-    const glassStyle = {
-        backgroundColor: 'rgba(10, 20, 40, 0.65)',
-        backdropFilter: 'blur(10px) saturate(120%)',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
-        color: 'white',
+    const tooltipStyle = {
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+        backdropFilter: 'blur(10px)',
+        border: '1px solid rgba(255, 255, 255, 0.18)',
+        boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.15)',
     };
 
     useEffect(() => {
+        // Set authorization header from localStorage
+        const authTokens = localStorage.getItem('authTokens');
+        if (authTokens) {
+            const tokens = JSON.parse(authTokens);
+            axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${tokens.access}`;
+        } else {
+            // Redirect to login if no tokens
+            window.location.href = '/login';
+            return;
+        }
+        
         axiosInstance.get<StatsData>('/api/service-requests/stats/')
             .then(response => {
                 setStats(response.data);
@@ -34,6 +45,12 @@ export function DashboardStats() {
             })
             .catch(error => {
                 console.error('Error fetching stats:', error);
+                if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+                    // If unauthorized, redirect to login
+                    localStorage.removeItem('authTokens');
+                    localStorage.removeItem('userData');
+                    window.location.href = '/login';
+                }
                 setLoading(false);
             });
     }, []);
@@ -44,7 +61,7 @@ export function DashboardStats() {
 
     if (!stats || stats.total_requests === 0) {
         return (
-            <Card radius="md" p="xl" mt="md" style={glassStyle}>
+            <Card radius="md" p="xl" mt="md" className="glass-card">
                 <Text ta="center" size="lg" fw={500}>No service requests yet!</Text>
                 <Text ta="center" c="gray.3" mt="xs">Your dashboard will show stats here once you request a service.</Text>
             </Card>
@@ -70,7 +87,7 @@ export function DashboardStats() {
     ];
 
     const statCards = data.map((stat) => (
-        <Paper radius="md" p="lg" key={stat.title} style={glassStyle}>
+        <Paper radius="md" p="lg" key={stat.title} className="glass-card">
             <Group>
                 <RingProgress
                     size={100}
@@ -105,14 +122,14 @@ export function DashboardStats() {
             <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="xl" mb="xl">
                 {statCards}
             </SimpleGrid>
-            <Paper radius="md" p="lg" style={{ ...glassStyle, height: 450 }}>
+            <Paper radius="md" p="lg" className="glass-card" style={{ height: 450 }}>
                 <Text size="xl" fw={500} ta="center" mb="lg">Service Request Statuses</Text>
                 <ResponsiveContainer width="100%" height="90%">
                     <PieChart>
                         <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={150} label>
                             {pieData.map((entry) => <Cell key={`cell-${entry.name}`} fill={COLORS[entry.name]} />)}
                         </Pie>
-                        <Tooltip contentStyle={glassStyle} />
+                        <Tooltip contentStyle={tooltipStyle} />
                         <Legend wrapperStyle={{ paddingTop: '20px' }} />
                     </PieChart>
                 </ResponsiveContainer>

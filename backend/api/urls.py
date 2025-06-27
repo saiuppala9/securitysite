@@ -20,6 +20,7 @@ router.register(r'admins', AdminUserViewSet, basename='admin-user')
 urlpatterns = [
     path('csrf/', csrf, name='csrf'),
     path('payu/initiate/', PayUInitiatePaymentView.as_view(), name='payu-initiate'),
+    path('service-requests/<int:pk>/pay/', PayUInitiatePaymentView.as_view(), name='service-request-pay'),
     path('payu/success/', PayUSuccessView.as_view(), name='payu-success'),
     path('payu/failure/', PayUFailureView.as_view(), name='payu-failure'),
     path('profile/update/initiate/', InitiateProfileUpdateView.as_view(), name='profile-update-initiate'),

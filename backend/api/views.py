@@ -1,43 +1,44 @@
-from rest_framework import viewsets, permissions, generics, status
+from django.shortcuts import render
+from rest_framework import viewsets, permissions, status, generics
 from rest_framework.decorators import action
-from rest_framework.permissions import BasePermission
-from .models import Service, Enquiry, ServiceRequest, Report, UserAccount
-from django.contrib.auth.tokens import default_token_generator
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from django.utils import timezone
+from django.conf import settings
+from django.core.mail import send_mail
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
+from django.http import JsonResponse
+from django.contrib.auth import get_user_model
+from django.db.models import Count
+from django.contrib.auth.models import Group
 from django.utils.http import urlsafe_base64_decode
 from django.utils.encoding import force_str
-from django.http import JsonResponse, HttpResponseRedirect
-from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
-from django.conf import settings
-from rest_framework.response import Response
-from rest_framework import status
-from django.utils import timezone
-from datetime import timedelta
-from rest_framework.views import APIView
-from django.db.models import Count
-import hashlib
-import uuid
-from django.core.mail import send_mail
+from django.contrib.auth.tokens import default_token_generator
+from django.core.exceptions import ValidationError
+from django.db.models import Q
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework_simplejwt.views import TokenObtainPairView
 from django.core.cache import cache
-import random
+from .models import Service, Enquiry, ServiceRequest, Report, UserAccount
 from .serializers import (
-    ServiceSerializer,
-    EnquirySerializer,
-    ServiceRequestSerializer,
-    ReportSerializer,
-    ServiceRequestReportUploadSerializer,
-    AdminUserSerializer,
-    CustomUserSerializer,
-    ProfileUpdateSerializer,
-    SetInitialPasswordSerializer,
-    AdminProfileSerializer, PasswordResetSerializer
+    ServiceSerializer, EnquirySerializer, ServiceRequestSerializer,
+    ServiceRequestReportUploadSerializer, ServiceRequestAssignSerializer,
+    UserDashboardStatsSerializer, AdminServiceRequestStatsSerializer,
+    AdminStatusDistributionSerializer, AdminUserSerializer, ReportSerializer,
+    SetInitialPasswordSerializer, AdminProfileUpdateSerializer,
+    CustomTokenObtainPairSerializer, ProfileUpdateSerializer,
+    PasswordResetSerializer, AdminProfileSerializer, CustomUserSerializer
 )
-from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Group
-from django.db.models import Count, Q
+from .utils import encrypt, decrypt
+import json
+import uuid
+import hmac
+import random
 import logging
+from datetime import timedelta
 
-User = get_user_model()
 logger = logging.getLogger(__name__)
+User = get_user_model()
 
 
 class AdminProfileUpdateInitiateView(APIView):
@@ -221,10 +222,12 @@ class ServiceRequestViewSet(viewsets.ModelViewSet):
         Assigns a service request to an admin user.
         """
         service_request = self.get_object()
-        admin_id = request.data.get('admin_id')
-
-        if not admin_id:
-            return Response({'error': 'admin_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = ServiceRequestAssignSerializer(data=request.data)
+        
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
+        admin_id = serializer.validated_data['admin_id']
 
         try:
             admin_user = User.objects.get(id=admin_id, is_staff=True)
@@ -234,7 +237,7 @@ class ServiceRequestViewSet(viewsets.ModelViewSet):
         service_request.assigned_to = admin_user
         service_request.save(update_fields=['assigned_to'])
 
-        return Response(ServiceRequestSerializer(service_request).data)
+        return Response(ServiceRequestSerializer(service_request, context={'request': request}).data)
 
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAdminUser])
     def update_status(self, request, pk=None):
@@ -259,17 +262,35 @@ class ServiceRequestViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAdminUser], serializer_class=ServiceRequestReportUploadSerializer)
     def upload_report(self, request, pk=None):
         service_request = self.get_object()
-        serializer = self.get_serializer(service_request, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-
-        service_request.status = 'completed'
-        service_request.save()
-
-        # Send email notification to user
+        
+        # Debug information
+        print(f"Upload report request received for service_request {pk}")
+        print(f"FILES: {request.FILES}")
+        print(f"DATA: {request.data}")
+        
+        # Check if there's a file in the request
+        if 'report_file' not in request.FILES:
+            return Response({'error': 'No report file provided'}, status=400)
+            
+        file_obj = request.FILES['report_file']
+        print(f"File received: {file_obj.name}, size: {file_obj.size}, content_type: {file_obj.content_type}")
+        
+        # Create a new Report instance
         try:
-            subject = f"Your Security Report for '{service_request.service.name}' is Ready"
-            message = f"""
+            report = Report.objects.create(
+                service_request=service_request,
+                report_file=file_obj
+            )
+            print(f"Report created with ID: {report.id}")
+            
+            # Update service request status
+            service_request.status = 'completed'
+            service_request.save()
+            
+            # Send email notification to user
+            try:
+                subject = f"Your Security Report for '{service_request.service.name}' is Ready"
+                message = f"""
 Dear {service_request.client.first_name or service_request.client.email},
 
 Your security audit report for the service "{service_request.service.name}" is now complete and available for download.
@@ -282,18 +303,22 @@ Thank you for choosing our services.
 Best regards,
 The Cyphex Team
 """
-            send_mail(
-                subject,
-                message,
-                settings.DEFAULT_FROM_EMAIL,
-                [service_request.client.email],
-                fail_silently=False,
-            )
-        except Exception as e:
-            # Log the error, but don't fail the request because of it
-            print(f"Error sending email notification for service request {service_request.id}: {e}")
+                send_mail(
+                    subject,
+                    message,
+                    settings.DEFAULT_FROM_EMAIL,
+                    [service_request.client.email],
+                    fail_silently=False,
+                )
+            except Exception as e:
+                # Log the error, but don't fail the request because of it
+                print(f"Error sending email notification for service request {service_request.id}: {e}")
 
-        return Response(ServiceRequestSerializer(service_request).data)
+            return Response(ServiceRequestSerializer(service_request, context={'request': request}).data)
+            
+        except Exception as e:
+            print(f"Error saving report: {str(e)}")
+            return Response({'error': f'Error saving report: {str(e)}'}, status=500)
 
 
 class ReportViewSet(viewsets.ModelViewSet):
@@ -391,7 +416,12 @@ class PayUInitiatePaymentView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
-        service_request_id = request.data.get('service_request_id')
+        # Extract service_request_id from URL or request data
+        service_request_id = kwargs.get('pk') or request.data.get('service_request_id')
+        
+        if not service_request_id:
+            return Response({'error': 'Service request ID is required.'}, status=status.HTTP_400_BAD_REQUEST)
+            
         try:
             service_request = ServiceRequest.objects.get(id=service_request_id, client=request.user)
         except ServiceRequest.DoesNotExist:
@@ -567,7 +597,7 @@ class AdminListForAssignmentView(APIView):
 
     def get(self, request, *args, **kwargs):
         admin_group_names = ['Main Admin', 'Full Access Admin', 'Partial Access Admin']
-        admins = User.objects.filter(groups__name__in=admin_group_names).distinct()
+        admins = UserAccount.objects.filter(groups__name__in=admin_group_names).distinct()
         serializer = CustomUserSerializer(admins, many=True)
         return Response(serializer.data)
 
@@ -663,6 +693,10 @@ class AdminServiceRequestStatsView(APIView):
             stats['total_users'] = 0  # Partial admins don't see this, but API should be consistent
 
         return Response(stats)
+
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer
 
 
 

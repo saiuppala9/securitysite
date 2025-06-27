@@ -1,100 +1,207 @@
-import { Paper, Title, TextInput, Button, Container, Group, Anchor, Alert, Text } from '@mantine/core';
-import { useForm } from '@mantine/form';
-import { IconX } from '@tabler/icons-react';
+import {
+  TextInput,
+  PasswordInput,
+  Button,
+  Paper,
+  Title,
+  Text,
+  Group,
+  Anchor,
+  Box,
+  Flex,
+  Image,
+  Stack,
+  Alert,
+  Grid,
+} from '@mantine/core';
+import { useForm, zodResolver } from '@mantine/form';
+import { z } from 'zod';
 import { Link } from 'react-router-dom';
-import axiosInstance from '../utils/axiosInstance';
+import axios from 'axios';
+import { IconX } from '@tabler/icons-react';
+import brandLogo from '../assets/brand.png';
+import backgroundImage from '../assets/cyberdash.jpg';
 import { useState } from 'react';
 
-
+const schema = z
+  .object({
+    email: z.string().email({ message: 'Invalid email' }),
+    first_name: z.string().min(1, { message: 'First name is required' }),
+    last_name: z.string().min(1, { message: 'Last name is required' }),
+    password: z.string().min(8, { message: 'Password should have at least 8 characters' }),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ['confirmPassword'],
+  });
 
 export function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
-  const [isRegistered, setIsRegistered] = useState(false);
+  const [registrationSuccess, setRegistrationSuccess] = useState(false);
 
   const form = useForm({
     initialValues: {
       email: '',
-      password: '',
-      re_password: '',
       first_name: '',
       last_name: '',
+      password: '',
+      confirmPassword: '',
     },
-    validate: {
-      email: (value: string) => (/^\S+@\S+$/.test(value) ? null : 'Invalid email'),
-      password: (value: string) => (value.length < 8 ? 'Password must have at least 8 characters' : null),
-      re_password: (value: string, values: { password: any }) => (value !== values.password ? 'Passwords did not match' : null),
-      first_name: (value: string) => (value.length < 1 ? 'First name is required' : null),
-      last_name: (value: string) => (value.length < 1 ? 'Last name is required' : null),
-    },
+    validate: zodResolver(schema),
   });
 
-  const handleSubmit = async (values: Omit<typeof form.values, 're_password'>) => {
+  const handleSubmit = async (values: typeof form.values) => {
     try {
-      await axiosInstance.post('/auth/users/', values);
-      setIsRegistered(true);
       setError(null);
+      // The backend requires username and re_password for confirmation.
+      await axios.post('http://localhost:8000/auth/users/', {
+        username: values.email,
+        email: values.email,
+        first_name: values.first_name,
+        last_name: values.last_name,
+        password: values.password,
+        re_password: values.confirmPassword,
+      });
+      setRegistrationSuccess(true);
     } catch (err: any) {
+      console.error('Registration Error:', err.response);
       if (err.response && err.response.data) {
-        const errorData = err.response.data;
-        const errorMessages: string[] = [];
-        for (const key in errorData) {
-          if (Object.prototype.hasOwnProperty.call(errorData, key)) {
-            const value = errorData[key];
-            if (Array.isArray(value)) {
-              errorMessages.push(`${key}: ${value.join(', ')}`);
-            } else {
-              errorMessages.push(`${key}: ${String(value)}`);
-            }
-          }
+        const apiError = err.response.data;
+        // Handle specific field errors from the backend
+        if (apiError.username) {
+          form.setFieldError('email', apiError.username.join(', '));
+        } else if (apiError.email) {
+          form.setFieldError('email', apiError.email.join(', '));
+        } else if (apiError.password) {
+          form.setFieldError('password', apiError.password.join(', '));
+        } else {
+          // Display a generic error if the field is not recognized
+          const errorMessages = Object.values(apiError).flat().join(' ');
+          setError(errorMessages || 'An unexpected error occurred. Please try again.');
         }
-        setError(errorMessages.join('; '));
       } else {
-        setError('An unexpected error occurred.');
+        setError('An unexpected error occurred during registration.');
       }
     }
   };
 
-  if (isRegistered) {
+  if (registrationSuccess) {
     return (
-      <Container size={420} my={40}>
-        <Paper withBorder shadow="md" p={30} mt={30} radius="md">
-          <Title ta="center">Registration Successful</Title>
-          <Text c="dimmed" size="sm" ta="center" mt={5}>
-            Please check your email for an activation link to complete the process.
+      <Box
+        style={{
+          backgroundImage: `url(${backgroundImage})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Paper withBorder shadow="md" p={30} radius="md" className="glass-card">
+          <Title order={2} ta="center">Registration Successful</Title>
+          <Text color="dimmed" size="sm" ta="center" mt="md">
+            Please check your email to activate your account.
           </Text>
-          <Button component={Link} to="/login" fullWidth mt="xl">
-            Back to Login
-          </Button>
+          <Group justify="center" mt="lg">
+            <Button component={Link} to="/login" fullWidth>
+              Back to Login
+            </Button>
+          </Group>
         </Paper>
-      </Container>
+      </Box>
     );
   }
 
   return (
-    <Container size={420} my={40}>
-      <Title ta="center">Create an account</Title>
-      <Paper withBorder shadow="md" p={30} mt={30} radius="md">
-        {error && (
-          <Alert icon={<IconX size="1rem" />} title="Registration Failed" color="red" withCloseButton onClose={() => setError(null)} mb="md">
-            {error}
-          </Alert>
-        )}
-        <form onSubmit={form.onSubmit(handleSubmit)}>
-          <TextInput label="Email" placeholder="your@email.com" required {...form.getInputProps('email')} />
-          <TextInput label="First Name" placeholder="First Name" required mt="md" {...form.getInputProps('first_name')} />
-          <TextInput label="Last Name" placeholder="Last Name" required mt="md" {...form.getInputProps('last_name')} />
-          <TextInput type="password" label="Password" placeholder="Your password" required mt="md" {...form.getInputProps('password')} />
-          <TextInput type="password" label="Confirm Password" placeholder="Confirm password" required mt="md" {...form.getInputProps('re_password')} />
-          <Button fullWidth mt="xl" type="submit">
-            Register
-          </Button>
-        </form>
-        <Group justify="center" mt="md">
-          <Anchor component={Link} to="/login" size="sm">
-            Already have an account? Login
-          </Anchor>
-        </Group>
-      </Paper>
-    </Container>
+    <Box
+      style={{
+        backgroundImage: `url(${backgroundImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        minHeight: '100vh',
+      }}
+    >
+      <Flex justify="center" align="center" style={{ minHeight: '100vh', width: '100%' }}>
+        <Stack align="center" gap="xl">
+          <Image src={brandLogo} h={120} w="auto" fit="contain" className="brand-logo" />
+          <Paper
+            withBorder
+            shadow="md"
+            p={30}
+            radius="md"
+            className="glass-card"
+            style={{ width: 420 }}
+          >
+            <Title ta="center" order={2} mb="xl">
+              Create an Account
+            </Title>
+            {error && (
+              <Alert
+                icon={<IconX size="1rem" />}
+                title="Registration Failed"
+                color="red"
+                withCloseButton
+                onClose={() => setError(null)}
+                mb="md"
+              >
+                {error}
+              </Alert>
+            )}
+            <form onSubmit={form.onSubmit(handleSubmit)}>
+              <Grid>
+                <Grid.Col span={6}>
+                  <TextInput
+                    label="First Name"
+                    placeholder="John"
+                    required
+                    {...form.getInputProps('first_name')}
+                  />
+                </Grid.Col>
+                <Grid.Col span={6}>
+                  <TextInput
+                    label="Last Name"
+                    placeholder="Doe"
+                    required
+                    {...form.getInputProps('last_name')}
+                  />
+                </Grid.Col>
+              </Grid>
+              <TextInput
+                label="Email Address"
+                placeholder="you@yourcompany.com"
+                required
+                mt="md"
+                {...form.getInputProps('email')}
+              />
+              <PasswordInput
+                label="Password"
+                placeholder="Your password"
+                required
+                mt="md"
+                {...form.getInputProps('password')}
+              />
+              <PasswordInput
+                label="Confirm Password"
+                placeholder="Confirm password"
+                required
+                mt="md"
+                {...form.getInputProps('confirmPassword')}
+              />
+              <Button fullWidth mt="xl" type="submit">
+                Register
+              </Button>
+              <Text color="dimmed" size="sm" ta="center" mt="md">
+                Already have an account?{' '}
+                <Anchor component={Link} to="/login" size="sm">
+                  Login
+                </Anchor>
+              </Text>
+            </form>
+          </Paper>
+        </Stack>
+      </Flex>
+    </Box>
   );
 }

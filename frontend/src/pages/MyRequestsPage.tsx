@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Title, Accordion, Text, Badge, Paper, Group, Button, Loader, Alert } from '@mantine/core';
-import axiosInstance, { baseURL } from '../utils/axiosInstance';
+import axiosInstance from '../utils/axiosInstance';
 import { notifications } from '@mantine/notifications';
 import { IconAlertCircle, IconClock } from '@tabler/icons-react';
 import classes from './MyRequestsPage.module.css';
@@ -14,7 +14,7 @@ interface ServiceRequest {
   roles: string;
   notes: string;
   approved_at: string | null;
-  report_file: string | null;
+  report_url: string | null;
 }
 
 interface TimeLeft {
@@ -100,24 +100,38 @@ export function MyRequestsPage() {
   }, []);
 
   const handleDownload = (fileUrl: string, fileName: string) => {
-    axiosInstance.get(fileUrl, { responseType: 'blob' })
-      .then(response => {
-        const url = window.URL.createObjectURL(new Blob([response.data as BlobPart]));
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', fileName);
-        document.body.appendChild(link);
-        link.click();
-        link.parentNode?.removeChild(link);
-        window.URL.revokeObjectURL(url);
-      })
-      .catch(() => {
-        notifications.show({
-          title: 'Download Error',
-          message: 'Failed to download the report.',
-          color: 'red',
+    // First try direct download
+    const link = document.createElement('a');
+    link.href = fileUrl;
+    link.setAttribute('download', fileName);
+    link.setAttribute('target', '_blank'); // Fallback to opening in new tab
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // Add error handling in case direct download fails
+    link.onerror = () => {
+      // Fallback to axios download
+      axiosInstance.get<Blob>(fileUrl, { responseType: 'blob' })
+        .then(response => {
+          const blob = response.data as Blob;
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.setAttribute('download', fileName);
+          document.body.appendChild(link);
+          link.click();
+          link.parentNode?.removeChild(link);
+          window.URL.revokeObjectURL(url);
+        })
+        .catch(() => {
+          notifications.show({
+            title: 'Download Error',
+            message: 'Failed to download the report. Please try again or contact support if the issue persists.',
+            color: 'red',
+          });
         });
-      });
+    };
   };
 
   const handleWithdraw = async (serviceRequestId: number) => {
@@ -142,10 +156,23 @@ export function MyRequestsPage() {
 
   const handlePayment = async (serviceRequestId: number) => {
     try {
-      const response = await axiosInstance.post<{ [key: string]: string }>(`/api/service-requests/${serviceRequestId}/pay/`);
+      // Make sure we have the auth token set
+      const authTokens = localStorage.getItem('authTokens');
+      if (authTokens) {
+        const tokens = JSON.parse(authTokens);
+        axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${tokens.access}`;
+      }
+      
+      // Send the request with the correct service request ID
+      const response = await axiosInstance.post<{ [key: string]: string }>(`/api/service-requests/${serviceRequestId}/pay/`, {
+        service_request_id: serviceRequestId
+      });
+      
       const payuData = response.data;
+      console.log('Payment data received:', payuData);
       postToPayU(payuData);
     } catch (err: any) {
+      console.error('Payment error:', err);
       notifications.show({
         title: 'Payment Error',
         message: err.response?.data?.error || 'Could not initiate payment.',
@@ -168,24 +195,36 @@ export function MyRequestsPage() {
   };
 
   const postToPayU = (data: { [key: string]: string }) => {
-    const payuUrl = data.payu_mode === 'LIVE' 
-      ? 'https://secure.payu.in/_payment' 
-      : 'https://test.payu.in/_payment';
-
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = payuUrl;
-
-    Object.keys(data).forEach(key => {
-      const input = document.createElement('input');
-      input.type = 'hidden';
-      input.name = key;
-      input.value = data[key];
-      form.appendChild(input);
-    });
-
-    document.body.appendChild(form);
-    form.submit();
+    try {
+      const payuUrl = data.payu_mode === 'LIVE' 
+        ? 'https://secure.payu.in/_payment' 
+        : 'https://test.payu.in/_payment';
+  
+      console.log('Submitting to PayU URL:', payuUrl);
+      console.log('PayU form data:', data);
+  
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = payuUrl;
+  
+      Object.keys(data).forEach(key => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = key;
+        input.value = data[key];
+        form.appendChild(input);
+      });
+  
+      document.body.appendChild(form);
+      form.submit();
+    } catch (error) {
+      console.error('Error in postToPayU:', error);
+      notifications.show({
+        title: 'Payment Form Error',
+        message: 'Failed to create payment form. Please try again.',
+        color: 'red',
+      });
+    }
   };
 
   return (
@@ -201,11 +240,11 @@ export function MyRequestsPage() {
       {error && <Alert icon={<IconAlertCircle size="1rem" />} title="Error!" color="red" variant="light">{error}</Alert>}
       
       {!loading && !error && requests.length === 0 && (
-        <Paper withBorder shadow="md" radius="md" p={40} mt={60} style={{ maxWidth: 500, margin: 'auto', textAlign: 'center' }}>
+        <Paper className="glass-card" radius="md" p={40} mt={60} style={{ maxWidth: 500, margin: 'auto', textAlign: 'center' }}>
           <IconAlertCircle size={48} color="#868E96" style={{ marginBottom: 16 }} />
           <Title order={3} mb="xs">No Service Requests Yet</Title>
           <Text c="dimmed" mb="md">
-            You haven’t made any service requests. Click <b>Request Service</b> above to get started!
+            You haven't made any service requests. Click <b>Request Service</b> above to get started!
           </Text>
         </Paper>
       )}
@@ -225,7 +264,7 @@ export function MyRequestsPage() {
               <Accordion.Panel className={classes.accordionPanel}>
                 <Text size="sm" c="dimmed" mb={16}>Requested on: {new Date(request.request_date).toLocaleDateString()}</Text>
                 
-                <Paper withBorder p="md" radius="md" mb="md">
+                <Paper p="md" radius="md" style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', border: '1px solid rgba(255, 255, 255, 0.2)' }}>
                     <Text mb={4}><strong>URL:</strong> {request.url}</Text>
                     <Text mb={4}><strong>Roles:</strong> {request.roles}</Text>
                     {request.notes && <Text mb={4}><strong>Notes:</strong> {request.notes}</Text>}
@@ -252,13 +291,13 @@ export function MyRequestsPage() {
                   </>
                 )}
 
-                {request.status === 'completed' && request.report_file && (
+                {request.status === 'completed' && request.report_url && (
                   <Button 
-                    onClick={() => request.report_file && handleDownload(request.report_file, `report-${request.id}.pdf`)}
+                    onClick={() => request.report_url && handleDownload(request.report_url, `report-${request.id}.pdf`)}
                     variant="filled"
                     color="violet"
                     size="sm"
-                    disabled={!request.report_file}
+                    disabled={!request.report_url}
                   >
                     Download Report
                   </Button>

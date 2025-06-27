@@ -1,0 +1,217 @@
+import { useState, useRef, useEffect } from 'react';
+import { Box, Text, Button, Group } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
+import { IconUpload, IconFile, IconX } from '@tabler/icons-react';
+
+interface FileUploaderProps {
+  onFileSelected: (file: File) => void;
+  maxSize?: number; // in bytes
+  accept?: string;
+}
+
+export function FileUploader({ onFileSelected, maxSize = 10 * 1024 * 1024, accept = '.pdf,.jpg,.jpeg,.png' }: FileUploaderProps) {
+  const [dragActive, setDragActive] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Prevent default browser behavior for drag and drop files
+  useEffect(() => {
+    const preventDefaults = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+      document.body.addEventListener(eventName, preventDefaults, false);
+    });
+
+    return () => {
+      ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        document.body.removeEventListener(eventName, preventDefaults, false);
+      });
+    };
+  }, []);
+
+  const handleDrag = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Drag event:', e.type);
+    
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true);
+    } else if (e.type === 'dragleave') {
+      setDragActive(false);
+    }
+  };
+
+  const validateFile = (file: File): boolean => {
+    console.log('Validating file:', file.name, file.size, file.type);
+    
+    // Check file size
+    if (file.size > maxSize) {
+      notifications.show({
+        title: 'File too large',
+        message: `The file must be less than ${maxSize / 1024 / 1024}MB.`,
+        color: 'red',
+      });
+      return false;
+    }
+
+    // Check file type
+    const acceptedTypes = accept.split(',');
+    const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
+    
+    console.log('File extension:', fileExtension);
+    console.log('Accepted types:', acceptedTypes);
+    
+    if (!acceptedTypes.includes(fileExtension) && 
+        !acceptedTypes.some(type => file.type.includes(type.replace('.', '')))) {
+      notifications.show({
+        title: 'Invalid file type',
+        message: `Please select a file of type: ${accept}`,
+        color: 'red',
+      });
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    console.log('Drop event triggered');
+    
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const file = e.dataTransfer.files[0];
+      console.log('File dropped:', file.name, file.size, file.type);
+      
+      if (validateFile(file)) {
+        setSelectedFile(file);
+        onFileSelected(file);
+        notifications.show({
+          title: 'File selected',
+          message: `${file.name} has been selected`,
+          color: 'green',
+        });
+      }
+    } else {
+      console.log('No files in drop event');
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    console.log('File input change event triggered');
+    
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      console.log('File selected:', file.name, file.size, file.type);
+      
+      if (validateFile(file)) {
+        setSelectedFile(file);
+        onFileSelected(file);
+        notifications.show({
+          title: 'File selected',
+          message: `${file.name} has been selected`,
+          color: 'green',
+        });
+      }
+    } else {
+      console.log('No files in change event');
+    }
+  };
+
+  const onButtonClick = () => {
+    console.log('Button clicked, triggering file input click');
+    if (inputRef.current) {
+      inputRef.current.click();
+    }
+  };
+
+  return (
+    <Box>
+      <Box
+        onDragEnter={handleDrag}
+        onDragOver={handleDrag}
+        onDragLeave={handleDrag}
+        onDrop={handleDrop}
+        style={{
+          position: 'relative',
+          height: '150px',
+          borderRadius: '8px',
+          border: dragActive 
+            ? '2px dashed rgba(120, 120, 255, 0.7)' 
+            : '2px dashed rgba(255, 255, 255, 0.3)',
+          backgroundColor: 'rgba(0, 0, 0, 0.2)',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: '20px',
+          cursor: 'pointer',
+          transition: 'all 0.3s ease',
+        }}
+        onClick={onButtonClick}
+      >
+        {selectedFile ? (
+          <>
+            <IconFile size={40} stroke={1.5} color="white" />
+            <Text fw={700} size="lg" color="white" mt="md">
+              File selected
+            </Text>
+            <Text mt="sm" color="teal">
+              {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
+            </Text>
+          </>
+        ) : (
+          <>
+            <IconUpload size={40} stroke={1.5} color="white" />
+            <Text fw={700} size="lg" color="white" mt="md">
+              Drop your file here or click to select
+            </Text>
+            <Text size="sm" color="dimmed" mt="sm">
+              Upload a PDF report or image (max {maxSize / 1024 / 1024}MB)
+            </Text>
+          </>
+        )}
+        
+        <input
+          ref={inputRef}
+          type="file"
+          accept={accept}
+          onChange={handleChange}
+          style={{ display: 'none' }}
+          data-testid="file-input"
+        />
+      </Box>
+      
+      <Group justify="center" mt="md">
+        {!selectedFile ? (
+          <Button 
+            variant="filled" 
+            color="blue" 
+            onClick={onButtonClick}
+            leftSection={<IconUpload size={20} />}
+          >
+            Select File
+          </Button>
+        ) : (
+          <Button 
+            variant="filled" 
+            color="red" 
+            onClick={() => {
+              setSelectedFile(null);
+              onFileSelected(new File([], '')); // Send empty file to clear
+              console.log('File selection cleared');
+            }}
+            leftSection={<IconX size={20} />}
+          >
+            Clear
+          </Button>
+        )}
+      </Group>
+    </Box>
+  );
+} 

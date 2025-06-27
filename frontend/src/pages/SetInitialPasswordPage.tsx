@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Container, Title, PasswordInput, Button, Box, Paper, Text } from '@mantine/core';
+import { Container, Title, PasswordInput, Button, Paper, Text } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import axiosInstance from '../utils/axiosInstance';
 

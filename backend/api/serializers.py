@@ -2,18 +2,75 @@ from djoser.serializers import UserCreateSerializer as BaseUserCreateSerializer,
 from django.contrib.auth.models import User, Group
 from rest_framework import serializers
 from .models import Service, Enquiry, ServiceRequest, Report, UserAccount
-from .encryption import encrypt
+from .utils import encrypt
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_encode
 from django.utils.encoding import force_bytes
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.conf import settings
+from django.contrib.auth import get_user_model
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
+from django.utils.http import urlsafe_base64_decode
+from django.utils.encoding import force_str
+from django.contrib.auth import authenticate
+
+User = get_user_model()
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        # Authenticate user
+        authenticate_kwargs = {
+            'email': attrs['email'],
+            'password': attrs['password']
+        }
+        user = authenticate(**authenticate_kwargs)
+        
+        if user is None:
+            raise serializers.ValidationError('No active account found with the given credentials')
+
+        if not user.is_active:
+            raise serializers.ValidationError('Account is not active')
+
+        refresh = self.get_token(user)
+        data = {
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+            'user': {
+                'id': user.id,
+                'email': user.email,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+                'is_staff': user.is_staff,
+            }
+        }
+        return data
+
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        # Add custom claims
+        token['is_staff'] = user.is_staff
+        token['email'] = user.email
+        token['first_name'] = user.first_name
+        token['last_name'] = user.last_name
+        return token
 
 class UserCreateSerializer(BaseUserCreateSerializer):
     class Meta(BaseUserCreateSerializer.Meta):
-        model = UserAccount
-        fields = ('id', 'email', 'password', 'first_name', 'last_name')
+        model = User
+        fields = ('id', 'email', 'first_name', 'last_name', 'password', 'is_staff')
+
+
+class UserSerializer(BaseUserSerializer):
+    class Meta(BaseUserSerializer.Meta):
+        model = User
+        fields = ('id', 'email', 'first_name', 'last_name', 'is_staff')
 
 
 class CustomUserSerializer(BaseUserSerializer):
@@ -63,6 +120,13 @@ class ServiceRequestReportUploadSerializer(serializers.ModelSerializer):
     class Meta:
         model = ServiceRequest
         fields = ('report_file',)
+
+
+class ServiceRequestAssignSerializer(serializers.Serializer):
+    """
+    Serializer for assigning a service request to an admin user.
+    """
+    admin_id = serializers.IntegerField(required=True)
 
 
 class ProfileUpdateSerializer(serializers.ModelSerializer):
@@ -130,6 +194,37 @@ class PasswordResetSerializer(serializers.Serializer):
         if data['new_password'] != data['confirm_password']:
             raise serializers.ValidationError("Passwords do not match.")
         return data
+
+class AdminProfileUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserAccount
+        fields = ('first_name', 'last_name')
+
+class UserDashboardStatsSerializer(serializers.Serializer):
+    """
+    Serializer for user dashboard statistics.
+    """
+    total_requests = serializers.IntegerField()
+    pending_approval = serializers.IntegerField()
+    awaiting_payment = serializers.IntegerField()
+    in_progress = serializers.IntegerField()
+    completed = serializers.IntegerField()
+    rejected = serializers.IntegerField()
+
+class AdminServiceRequestStatsSerializer(serializers.Serializer):
+    """
+    Serializer for admin dashboard statistics.
+    """
+    total_requests = serializers.IntegerField()
+    approved_requests = serializers.IntegerField()
+    completed_requests = serializers.IntegerField()
+    
+class AdminStatusDistributionSerializer(serializers.Serializer):
+    """
+    Serializer for admin dashboard status distribution.
+    """
+    status = serializers.CharField()
+    count = serializers.IntegerField()
 
 class ServiceRequestSerializer(serializers.ModelSerializer):
     # Read-only fields for display

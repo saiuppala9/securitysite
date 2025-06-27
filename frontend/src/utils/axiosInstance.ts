@@ -35,6 +35,12 @@ axiosInstance.interceptors.request.use(
             config.headers.Authorization = `Bearer ${tokens.access}`;
         }
 
+        // Check if we're sending FormData (file upload)
+        // If so, let the browser set the Content-Type with boundary
+        if (config.data instanceof FormData) {
+            delete config.headers['Content-Type'];
+        }
+
         if (config.method && !['get', 'head', 'options'].includes(config.method.toLowerCase())) {
             const csrfToken = getCookie('csrftoken');
             if (csrfToken) {
@@ -65,6 +71,24 @@ axiosInstance.interceptors.response.use(
 
                     const newTokens = response.data as { access: string; refresh: string };
                     localStorage.setItem('authTokens', JSON.stringify(newTokens));
+                    
+                    // Update user data in localStorage with new token information
+                    try {
+                        const decodedToken: any = JSON.parse(atob(newTokens.access.split('.')[1]));
+                        const userData = {
+                            id: decodedToken.user_id,
+                            email: decodedToken.email,
+                            username: decodedToken.username,
+                            first_name: decodedToken.first_name,
+                            last_name: decodedToken.last_name,
+                            is_staff: decodedToken.is_staff,
+                            is_superuser: decodedToken.is_superuser,
+                            groups: decodedToken.groups,
+                        };
+                        localStorage.setItem('userData', JSON.stringify(userData));
+                    } catch (error) {
+                        console.error('Failed to update user data from token', error);
+                    }
 
                     axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${newTokens.access}`;
                     originalRequest.headers['Authorization'] = `Bearer ${newTokens.access}`;
@@ -73,15 +97,24 @@ axiosInstance.interceptors.response.use(
                 } catch (refreshError) {
                     console.error('Token refresh failed', refreshError);
                     localStorage.removeItem('authTokens');
+                    localStorage.removeItem('userData');
                     delete axiosInstance.defaults.headers.common['Authorization'];
-                    window.location.href = '/login';
+                    
+                    // Check if the user was trying to access an admin route
+                    const isAdminRoute = window.location.pathname.startsWith('/admin');
+                    window.location.href = isAdminRoute ? '/admin/login' : '/login';
+                    
                     return Promise.reject(refreshError);
                 }
             } else {
                 // No refresh token, logout
                 localStorage.removeItem('authTokens');
+                localStorage.removeItem('userData');
                 delete axiosInstance.defaults.headers.common['Authorization'];
-                window.location.href = '/login';
+                
+                // Check if the user was trying to access an admin route
+                const isAdminRoute = window.location.pathname.startsWith('/admin');
+                window.location.href = isAdminRoute ? '/admin/login' : '/login';
             }
         }
 

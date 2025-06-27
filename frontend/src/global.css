@@ -1,8 +1,72 @@
 body {
-  /* Default text color for dark theme */
-  color: #c1c2c5;
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: #f1f3f5; /* Global text color */
 }
 
-.mantine-Title-root, h1, h2, h3, h4, h5, h6 {
-  color: white !important;
+/* Style for titles and text */
+.mantine-Title-root, 
+.mantine-Text-root {
+  color: #f1f3f5 !important;
+}
+
+/* Style for all input fields to have a glass effect */
+.mantine-Input-input,
+.mantine-Select-input,
+.mantine-NumberInput-input,
+.mantine-Textarea-input {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: #f1f3f5 !important;
+}
+
+/* Style for input focus state */
+.mantine-Input-input:focus,
+.mantine-Select-input:focus,
+.mantine-NumberInput-input:focus,
+.mantine-Textarea-input:focus {
+  border-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* Style for Select dropdown */
+.mantine-Select-dropdown {
+  background-color: rgba(37, 38, 43, 0.95) !important;
+  backdrop-filter: blur(5px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+}
+
+.mantine-Select-option {
+  color: #f1f3f5 !important;
+}
+
+.mantine-Select-option[data-hovered] {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Style for placeholders */
+.mantine-Input-placeholder {
+  color: #a6a7ab !important;
+}
+
+.glass-card {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1) !important;
+}
+
+
+.transparent-table th,
+.transparent-table td {
+  background-color: transparent !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #f1f3f5 !important; /* Table text color */
+}
+
+.transparent-table tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.05) !important;
 }

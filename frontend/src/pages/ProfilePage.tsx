@@ -32,7 +32,7 @@ export function ProfilePage() {
                 last_name: user.last_name || '',
             });
         }
-    }, [user]);
+    }, [user, form]);
 
     const handleSubmit = async (values: typeof form.values) => {
         setIsSubmitting(true);
@@ -61,7 +61,7 @@ export function ProfilePage() {
     const handleOtpVerify = async () => {
         setIsSubmitting(true);
         try {
-            const response = await axiosInstance.post('/api/profile/update/verify/', { otp });
+            await axiosInstance.post('/api/profile/update/verify/', { otp });
             const tokens = JSON.parse(localStorage.getItem('authTokens') || '{}');
             // The login function in AuthContext handles updating the user state
             await login(tokens.access, tokens.refresh);
@@ -90,7 +90,7 @@ export function ProfilePage() {
 
     return (
         <Container size="xs" my="xl">
-            <Paper withBorder shadow="md" p={30} mt={30} radius="md">
+            <Paper p={30} mt={30} radius="md" className="glass-card">
                 <Title ta="center" mb="lg">My Profile</Title>
                 <form onSubmit={form.onSubmit(handleSubmit)}>
                     <TextInput
@@ -125,6 +125,7 @@ export function ProfilePage() {
                 onClose={() => setOtpModalOpened(false)}
                 title="Enter Verification OTP"
                 centered
+                classNames={{ content: 'glass-card' }}
             >
                 <Text size="sm" mb="md">
                     A 6-digit One-Time Password has been sent to your email address.

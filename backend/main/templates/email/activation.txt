@@ -1,0 +1,8 @@
+Welcome, future agent!
+
+Thank you for joining Cyphex. To complete your registration and unlock your access, please activate your account by visiting the link below:
+
+{{ protocol }}://cyphex.in/{{ url|safe }}
+
+Thanks,
+The Cyphex Team

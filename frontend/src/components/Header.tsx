@@ -12,7 +12,6 @@ import {
 import brandLogo from '../assets/brand.png';
 import './Logo.css';
 import { Link, NavLink as RouterNavLink, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
 import {
   IconLogout,
   IconUserCircle,
@@ -24,6 +23,18 @@ import {
   IconTools,
   IconUsers,
 } from '@tabler/icons-react';
+import { useEffect, useState } from 'react';
+
+interface User {
+  id: number;
+  username?: string;
+  email: string;
+  first_name?: string;
+  last_name?: string;
+  is_staff: boolean;
+  is_superuser?: boolean;
+  groups?: string[];
+}
 
 const mainLinks = [
   { icon: IconLayoutDashboard, label: 'Dashboard', path: '/dashboard' },
@@ -39,12 +50,38 @@ const adminLinks = [
 ];
 
 export function Header() {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    // Get user data from localStorage
+    const userData = localStorage.getItem('userData');
+    if (userData) {
+      setUser(JSON.parse(userData));
+    } else {
+      // Check if we're on a protected route
+      const isProtectedRoute = 
+        window.location.pathname.startsWith('/dashboard') || 
+        window.location.pathname.startsWith('/request-service') ||
+        window.location.pathname.startsWith('/my-requests') ||
+        window.location.pathname.startsWith('/profile') ||
+        window.location.pathname.startsWith('/service-request');
+      
+      // If on protected route but no user data, redirect to login
+      if (isProtectedRoute) {
+        window.location.href = '/login';
+      }
+    }
+  }, []);
 
   const handleLogout = () => {
-    logout();
-    navigate('/');
+    // Clear auth data
+    localStorage.removeItem('authTokens');
+    localStorage.removeItem('userData');
+    setUser(null);
+    
+    // Redirect based on current path
+    const isAdminRoute = window.location.pathname.startsWith('/admin');
+    window.location.href = isAdminRoute ? '/admin/login' : '/login';
   };
 
   const links = user?.is_staff ? adminLinks : mainLinks;
@@ -76,11 +113,11 @@ export function Header() {
         <UnstyledButton>
           <Group gap="xs">
             <Avatar color="violet" radius="xl">
-              {user.first_name?.charAt(0)?.toUpperCase() || user.username.charAt(0).toUpperCase()}
+              {user.first_name?.charAt(0)?.toUpperCase() || user.email.charAt(0).toUpperCase()}
             </Avatar>
             <Box style={{ lineHeight: 1 }}>
               <Text size="sm" fw={500}>
-                {user.first_name || user.username}
+                {user.first_name || user.email.split('@')[0]}
               </Text>
             </Box>
             <IconChevronDown size={14} />
@@ -132,7 +169,7 @@ export function Header() {
       <Container size="xl" h="100%">
         <Group justify="space-between" h="100%">
           <Link to="/" style={{ textDecoration: 'none', color: 'inherit' }}>
-            <Image src={brandLogo} h={40} w="auto" alt="CypherX brand logo" className="brand-logo" />
+            <Image src={brandLogo} h={65} w="auto" alt="Cyphex brand logo" className="brand-logo" />
           </Link>
 
           {user && <Group gap="xs">{items}</Group>}

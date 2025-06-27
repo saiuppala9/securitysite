@@ -1,8 +1,8 @@
 import '@mantine/core/styles.css';
+import '@mantine/dropzone/styles.css';
 import './global.css';
 import { MantineProvider, createTheme, MantineTheme } from '@mantine/core';
 import { Routes, Route } from 'react-router-dom';
-import { Header } from './components/Header';
 import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
@@ -25,6 +25,7 @@ import { ProfilePage } from './pages/ProfilePage';
 import { ServiceRequestsPage } from './pages/ServiceRequestsPage';
 import { AdminProfilePage } from './pages/AdminProfilePage';
 import { SetInitialPasswordPage } from './pages/SetInitialPasswordPage';
+import { TestFileUploadPage } from './pages/TestFileUploadPage';
 
 const glassStyle = {
   backgroundColor: 'rgba(10, 20, 40, 0.65)',
@@ -105,6 +106,7 @@ function App() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/activate/:uid/:token" element={<ActivationPage />} />
         <Route path="/set-initial-password/:uid/:token" element={<SetInitialPasswordPage />} />
+        <Route path="/test-file-upload" element={<TestFileUploadPage />} />
 
         {/* User routes */}
         <Route element={<ProtectedRoute />}>
@@ -121,13 +123,14 @@ function App() {
 
         {/* Admin routes */}
         <Route path="/admin/login" element={<AdminLoginPage />} />
-        <Route element={<AdminRoute />}>
+        <Route path="/admin" element={<AdminRoute />}>
           <Route element={<AdminLayout />}>
-            <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
-            <Route path="/admin/requests" element={<ServiceRequestsPage />} />
-            <Route path="/admin/services" element={<ManageServicesPage />} />
-            <Route path="/admin/manage-admins" element={<ManageAdminsPage />} />
-            <Route path="/admin/profile" element={<AdminProfilePage />} />
+            <Route path="dashboard" element={<AdminDashboardPage />} />
+            <Route path="requests" element={<ServiceRequestsPage />} />
+            <Route path="services" element={<ManageServicesPage />} />
+            <Route path="manage-admins" element={<ManageAdminsPage />} />
+            <Route path="profile" element={<AdminProfilePage />} />
+            <Route path="test-file-upload" element={<TestFileUploadPage />} />
           </Route>
         </Route>
       </Routes>
