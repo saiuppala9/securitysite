@@ -36,7 +36,7 @@ DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 ALLOWED_HOSTS = [
     'cyphex.me',
     'www.cyphex.me',
-    'securitysite.herokuapp.com',
+    '.herokuapp.com',  # Allow all Heroku subdomains
     'localhost',
     '127.0.0.1',
 ]
