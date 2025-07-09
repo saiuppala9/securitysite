@@ -31,7 +31,7 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-g$8!+3s!h&h8!z*g*v&x-
 ENCRYPTION_KEY = os.environ.get('ENCRYPTION_KEY', 'qoaITmJdlY5XItbBa5herscqsp5os4t0Hn2gPjvUu6c=').encode()
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
+DEBUG = True  # TEMPORARY FOR DEBUGGING - MUST BE REVERTED
 
 ALLOWED_HOSTS = [
     'cyphex.me',
