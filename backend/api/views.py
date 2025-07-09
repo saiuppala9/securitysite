@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from rest_framework import viewsets, permissions, status, generics
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -7,7 +7,7 @@ from django.utils import timezone
 from django.conf import settings
 from django.core.mail import send_mail
 from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseRedirect
 from django.contrib.auth import get_user_model
 from django.db.models import Count
 from django.contrib.auth.models import Group
@@ -33,9 +33,11 @@ from .utils import encrypt, decrypt
 import json
 import uuid
 import hmac
+import hashlib
 import random
 import logging
 from datetime import timedelta
+from django.views.generic import TemplateView
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -699,4 +701,11 @@ class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
 
 
+class FrontendAppView(TemplateView):
+    """
+    Serves the compiled frontend entry point (index.html).
+    """
+    template_name = 'index.html'
 
+    def get(self, request, *args, **kwargs):
+        return self.render_to_response({})

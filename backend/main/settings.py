@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 
 from pathlib import Path
 import os
+import dj_database_url
 from datetime import timedelta
 from main.logo_base64 import EMAIL_LOGO_BASE64
 import dj_database_url
@@ -24,16 +25,25 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-z$)p#5o&@7(8&^t#f!x$y^q#e@=q#5&7y$s*!b#v&g=q#5&7y$s*!b#v&g')
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-g$8!+3s!h&h8!z*g*v&x-q#@p#o(w^u=u#&y$q)z!o@f@b^s#y')
 
 # Key for encrypting sensitive data
 ENCRYPTION_KEY = os.environ.get('ENCRYPTION_KEY', 'qoaITmJdlY5XItbBa5herscqsp5os4t0Hn2gPjvUu6c=').encode()
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.herokuapp.com', 'cyphex.me', '*.cyphex.me']
+ALLOWED_HOSTS = [
+    'cyphex.me',
+    'www.cyphex.me',
+    'your-app-name.herokuapp.com',  # Replace with your actual Heroku app name
+    'localhost',
+    '127.0.0.1',
+]
 
+# If you have a specific environment variable for allowed hosts on Heroku
+if 'ALLOWED_HOSTS_HEROKU' in os.environ:
+    ALLOWED_HOSTS.extend(os.environ.get('ALLOWED_HOSTS_HEROKU').split(','))
 
 # Application definition
 
@@ -56,8 +66,8 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -70,14 +80,14 @@ ROOT_URLCONF = 'main.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(BASE_DIR, 'main/templates')],
+        'DIRS': [os.path.join(BASE_DIR, 'main/templates'), os.path.join(BASE_DIR, '..', 'frontend', 'build')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
-                                'django.contrib.messages.context_processors.messages',
+                'django.contrib.messages.context_processors.messages',
                 'main.context_processors.email_logo',
             ],
         },
@@ -88,7 +98,7 @@ WSGI_APPLICATION = 'main.wsgi.application'
 
 # Allow all origins for development purposes. 
 # For production, you should restrict this to your actual frontend domain.
-CORS_ORIGIN_ALLOW_ALL = True
+CORS_ORIGIN_ALLOW_ALL = False
 
 CORS_ALLOWED_ORIGINS = [
     'https://cyphex.me',
@@ -165,6 +175,8 @@ PAYU_MERCHANT_SALT = os.environ.get('PAYU_MERCHANT_SALT', 'D6H7cJfacCcSZEqE0MtWj
 PAYU_MODE = os.environ.get('PAYU_MODE', 'LIVE')  # Set to 'LIVE' for production
 
 # Default primary key field type
+APPEND_SLASH = False
+
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
@@ -179,6 +191,7 @@ DOMAIN_NAME = 'http://localhost:8000'  # Using localhost for development
 
 # Frontend URL for generating links in emails
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://cyphex.me')
+BACKEND_URL = os.environ.get('BACKEND_URL', 'http://localhost:8000')
 LOGIN_URL = '/admin/login/'
 LOGIN_REDIRECT_URL = '/admin/dashboard/'
 
@@ -263,7 +276,7 @@ DJOSER = {
 # Production Security Settings
 # Note: These settings should only be enabled in a production environment (i.e., when DEBUG is False)
 if not DEBUG:
-    SECURE_SSL_REDIRECT = True
+    # SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_HSTS_SECONDS = 31536000  # 1 year

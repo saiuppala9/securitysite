@@ -15,19 +15,19 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, re_path
+from api.views import FrontendAppView
 from django.conf import settings
 from django.conf.urls.static import static
-from rest_framework_simplejwt.views import TokenRefreshView
-from api.views import CustomTokenObtainPairView
-
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('auth/', include('djoser.urls')),
-    path('auth/jwt/create/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('auth/jwt/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('auth/', include('djoser.urls.jwt')),
     path('api/', include('api.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 if settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+
+# Frontend catch-all
+urlpatterns.append(re_path(r'^.*', FrontendAppView.as_view(), name='frontend'))
